@@ -1,7 +1,7 @@
 '''
 Created on Aug 29, 2012
 
-@author: Erics
+@author: Eric Brodersen
 '''
 print 'Hello World'
 print 'Did This Work?'
