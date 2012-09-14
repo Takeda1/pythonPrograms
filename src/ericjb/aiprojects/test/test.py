@@ -3,7 +3,10 @@ Created on Aug 29, 2012
 
 @author: Eric Brodersen
 '''
-print 'Hello World'
-print 'Did This Work?'
-print "Third Time's the Charm"
-print "I just pulled this and will push from my laptop."
+
+newList = [((1, 2), 'South', 1), ((2, 3), 'North', 1), ((3, 4), 'East', 1)]
+#print newList[0][0]+newList[0][1]
+#newTuple = (1, 2)
+#print newTuple[0]+newTuple[1]
+for i in newList:
+    print i[1]
