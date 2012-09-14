@@ -13,8 +13,15 @@ by Pacman agents (in searchAgents.py).
 
 import util
 
-
+#===============================================================================
+# NODE CLASS:
+# getState()
+# getSuccessors()
+# childState(direction) returns state of child
+# Slightly more work is done in my node class than in the book's [p 79]
+#===============================================================================
 class Node:
+
     def __init__(self, problem, parent, action):
         self.problem = problem
         self.parent = parent
@@ -30,18 +37,30 @@ class Node:
         
     def getSuccessors(self):
         return self.successors
-    
     def childState(self, direction):
-        if self.direction == 'North':
+        from game import Directions
+        n = Directions.NORTH
+        e = Directions.EAST
+        s = Directions.SOUTH
+        w = Directions.WEST
+        if direction == n:
             return (self.state[0], self.state[1]+1)
-        elif self.direction == 'East':
+        elif direction == e:
             return (self.state[0]+1, self.state[1])
-        elif self.direction == 'South':
+        elif direction == s:
             return (self.state[0], self.state[1]-1)
-        elif self.direction == 'West':
+        elif direction == w:
             return (self.state[0]-1, self.state[1])
         else:
             return ('Error')
+    def printState(self):
+        print " "
+        print "NODE STATE: "
+        print "Parent: ", self.parent
+        print "Action: ", self.action
+        print "State: ", self.state
+        print "Successors: ", self.successors
+        print " "
             
         
 class SearchProblem:
@@ -112,35 +131,22 @@ def depthFirstSearch(problem):
     print "Start's successors:", problem.getSuccessors(problem.getStartState())
     """
     "*** YOUR CODE HERE ***"
-    from game import Directions
-    n = Directions.NORTH
-    e = Directions.EAST
-    s = Directions.SOUTH
-    w = Directions.WEST
-    print n
-    print "Start:", problem.getStartState()
-    print "Is the start a goal?", problem.isGoalState(problem.getStartState())
-    print "Start's successors:", problem.getSuccessors(problem.getStartState())
-    print "(5,4)'s successors:", problem.getSuccessors((5,4))
-    print "Action: ", problem.getSuccessors((5,4))[0][1]
-    head = Node(problem, None, None)
-    
-    
-    frontier = util.Stack()
-    successorsToFrontier(head, head.getSuccessors())
-    
-    
-    def successorsToFrontier(parent, successors):
+
+#===============================================================================
+# expandNodeToFrontier(parent) pushes previously unseen nodes onto the stack
+# isInFrontier(node) pops and pushes all nodes in frontier stack to find a match
+# isInExplored(node) uses keys (state tuples) to see if node has been explored
+# getSolution(node) goes back from goal node to start node, generating solution
+# The DFS solution implemented follows straight from GRAPH-Search, [p 77]
+#===============================================================================
+    def expandNodeToFrontier(parent):
+        successors = parent.getSuccessors()
+        tempNode = None
         for i in successors:
-            frontier.push(Node(parent, [1]))
-        
-        
-        
-    exploredSet = {}
-    current = None
-    def fillFrontier(node):
-        node.getChildren()
-        
+            tempNode = Node(problem, parent, i[1])
+            if isInFrontier(tempNode)==False and isInExplored(tempNode)==False:
+                frontier.push(tempNode)
+            
     def isInFrontier(node):
         tempStack = util.Stack()
         while frontier.isEmpty() == False:
@@ -148,18 +154,46 @@ def depthFirstSearch(problem):
             tempStack.push(tempNode)
             if(tempNode.getState == current.getState):
                 while tempStack.isEmpty() == False:
-                    frontier.push(tempStack.pop())
+                    tempNode = tempStack.pop()
+                    frontier.push(tempNode)
                 return True;
-                
+        while tempStack.isEmpty() == False:
+            tempNode = tempStack.pop()
+            frontier.push(tempNode)
+        return False
             
     def isInExplored(node):
         state = node.getState()
-        for state in exploredSet.keys():
+        if state in exploredSet.keys():
             return True
         return False
     
+    def getSolution(node):
+        tempNode = node
+        solution = [tempNode.action]
+        while tempNode.parent.action != None:
+            tempNode = tempNode.parent
+            solution.append(tempNode.action)
+        solution.reverse()
+        return solution
     
-    return    [s,s,w,s,w,w,s,w]
+    head = Node(problem, None, None)
+    current = head
+    frontier = util.Stack()
+    exploredSet = {}
+    expandNodeToFrontier(head)
+    
+    while True:
+        if frontier.isEmpty():
+            print 'Failure'
+            return None
+        current = frontier.pop()
+        if problem.isGoalState(current.getState()):
+            solution = getSolution(current)
+            print 'Solution: ', solution
+            return solution
+        exploredSet[current.getState()] = current
+        expandNodeToFrontier(current)
     util.raiseNotDefined()
 
 def breadthFirstSearch(problem):
@@ -182,8 +216,7 @@ def nullHeuristic(state, problem=None):
 def aStarSearch(problem, heuristic=nullHeuristic):
     "Search the node that has the lowest combined cost and heuristic first."
     "*** YOUR CODE HERE ***"
-    util.raiseNotDefined()
-        
+    util.raiseNotDefined()    
     
 # Abbreviations
 bfs = breadthFirstSearch
