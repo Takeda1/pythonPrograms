@@ -152,7 +152,7 @@ def depthFirstSearch(problem):
         while frontier.isEmpty() == False:
             tempNode = frontier.pop()
             tempStack.push(tempNode)
-            if(tempNode.getState == current.getState):
+            if(tempNode.getState == node.getState):
                 while tempStack.isEmpty() == False:
                     tempNode = tempStack.pop()
                     frontier.push(tempNode)
@@ -169,11 +169,10 @@ def depthFirstSearch(problem):
         return False
     
     def getSolution(node):
-        tempNode = node
-        solution = [tempNode.action]
-        while tempNode.parent.action != None:
-            tempNode = tempNode.parent
-            solution.append(tempNode.action)
+        solution = [node.action]
+        while node.parent.action != None:
+            node = node.parent
+            solution.append(node.action)
         solution.reverse()
         return solution
     
@@ -185,12 +184,10 @@ def depthFirstSearch(problem):
     
     while True:
         if frontier.isEmpty():
-            print 'Failure'
             return None
         current = frontier.pop()
         if problem.isGoalState(current.getState()):
             solution = getSolution(current)
-            print 'Solution: ', solution
             return solution
         exploredSet[current.getState()] = current
         expandNodeToFrontier(current)
