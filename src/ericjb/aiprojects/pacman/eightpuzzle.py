@@ -8,6 +8,7 @@
 
 import search
 import random
+from game import Directions
 
 # Module Classes
 
@@ -92,13 +93,13 @@ class EightPuzzleState:
    moves = []
    row, col = self.blankLocation
    if(row != 0):
-     moves.append('up')
+     moves.append(Directions.NORTH)
    if(row != 2):
-     moves.append('down')
+     moves.append(Directions.SOUTH)
    if(col != 0):
-     moves.append('left')
+     moves.append(Directions.WEST)
    if(col != 2):
-     moves.append('right')
+     moves.append(Directions.EAST)
    return moves
 
  def result(self, move):
@@ -114,16 +115,16 @@ class EightPuzzleState:
    it returns a new object.
    """
    row, col = self.blankLocation
-   if(move == 'up'):
+   if(move == Directions.NORTH):
      newrow = row - 1
      newcol = col
-   elif(move == 'down'):
+   elif(move == Directions.SOUTH):
      newrow = row + 1
      newcol = col
-   elif(move == 'left'):
+   elif(move == Directions.WEST):
      newrow = row
      newcol = col - 1
-   elif(move == 'right'):
+   elif(move == Directions.EAST):
      newrow = row
      newcol = col + 1
    else:

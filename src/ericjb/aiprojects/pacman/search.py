@@ -141,11 +141,11 @@ def depthFirstSearch(problem):
 #===============================================================================
     def expandNodeToFrontier(parent):
         successors = parent.getSuccessors()
-        tempNode = None
+        child = None
         for i in successors:
-            tempNode = Node(problem, parent, i[1])
-            if isInFrontier(tempNode)==False and isInExplored(tempNode)==False:
-                frontier.push(tempNode)
+            child = Node(problem, parent, i[1])
+            if isInFrontier(child)==False and isInExplored(child)==False:
+                frontier.push(child)
             
     def isInFrontier(node):
         tempStack = util.Stack()
@@ -176,6 +176,7 @@ def depthFirstSearch(problem):
         solution.reverse()
         return solution
     
+    #Initialize Problem
     head = Node(problem, None, None)
     current = head
     frontier = util.Stack()
@@ -196,11 +197,140 @@ def depthFirstSearch(problem):
 def breadthFirstSearch(problem):
     "Search the shallowest nodes in the search tree first. [p 81]"
     "*** YOUR CODE HERE ***"
+    
+    def isInFrontier(node):
+        tempStack = util.Queue()
+        while frontier.isEmpty() == False:
+            tempNode = frontier.pop()
+            tempStack.push(tempNode)
+            if(tempNode.getState == node.getState):
+                while tempStack.isEmpty() == False:
+                    tempNode = tempStack.pop()
+                    frontier.push(tempNode)
+                return True;
+        while tempStack.isEmpty() == False:
+            tempNode = tempStack.pop()
+            frontier.push(tempNode)
+        return False
+            
+    def isInExplored(node):
+        state = node.getState()
+        if state in exploredSet.keys():
+            return True
+        return False
+    
+    def getSolution(node):
+        solution = [node.action]
+        while node.parent.action != None:
+            node = node.parent
+            solution.append(node.action)
+        solution.reverse()
+        return solution
+    
+    
+    #Initialize Problem
+    head = Node(problem, None, None)
+    current = head
+    
+    if problem.isGoalState(current.getState()):
+        return getSolution(current)
+    frontier = util.Queue()
+    frontier.push(current)
+    exploredSet = {}
+    
+    while True:
+        child = None
+        if frontier.isEmpty():
+            return None
+        current = frontier.pop()
+        exploredSet[current.getState()] = current
+        
+        successors = current.getSuccessors()
+        for i in successors:
+            child = Node(problem, current, i[1])
+            if isInFrontier(child)==False and isInExplored(child)==False:
+                if problem.isGoalState(child.getState()):
+                    return getSolution(child)
+                frontier.push(child)
+                
     util.raiseNotDefined()
             
 def uniformCostSearch(problem):
     "Search the node of least total cost first. "
     "*** YOUR CODE HERE ***"
+    
+    def isInFrontier(node):
+        tempStack = util.Queue()
+        while frontier.isEmpty() == False:
+            tempNode = frontier.pop()
+            tempStack.push(tempNode)
+            if(tempNode.getState == node.getState):
+                while tempStack.isEmpty() == False:
+                    tempNode = tempStack.pop()
+                    frontier.push(tempNode)
+                return True;
+        while tempStack.isEmpty() == False:
+            tempNode = tempStack.pop()
+            frontier.push(tempNode)
+        return False
+            
+    def isInExplored(node):
+        state = node.getState()
+        if state in exploredSet.keys():
+            return True
+        return False
+    
+    def getSolution(node):
+        solution = [node.action]
+        while node.parent.action != None:
+            node = node.parent
+            solution.append(node.action)
+        solution.reverse()
+        return solution
+    
+    
+    #Initialize Problem
+    head = Node(problem, None, None)
+    headPriority = 0
+    current = head
+    currentPriority = headPriority
+    
+    
+
+    frontier = util.PriorityQueue
+    frontier.push(current, currentPriority)
+    exploredSet = {}
+    
+    #  TODO:
+    #
+    #  Must store Frontier keys in set/dictionary
+    #  Because popping on the priority queue doesn't 
+    #  tell you what the priority was, so pushing 
+    #  again won't work since there will be less info
+    #
+    #  ideally figure out how to replace frontier node with child
+    #  (this is the last line of UNIFORM-COST-SEARCH)
+    #  It should be nearly as efficient (in small cases) to just add the new child
+    #  into the frontier, without removing the old one.
+    
+    
+    while True:
+        child = None
+        if frontier.isEmpty():
+            return None
+        current = frontier.pop()
+        if problem.isGoalState(current.getState()):
+            return getSolution(current)
+        exploredSet[current.getState()] = current
+        
+        successors = current.getSuccessors()
+        for i in successors:
+            child = Node(problem, current, i[1])
+            if isInFrontier(child)==False and isInExplored(child)==False:
+                if problem.isGoalState(child.getState()):
+                    return getSolution(child)
+                frontier.push(child)
+        
     util.raiseNotDefined()
 
 def nullHeuristic(state, problem=None):
