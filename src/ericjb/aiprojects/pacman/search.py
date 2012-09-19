@@ -22,11 +22,12 @@ import util
 #===============================================================================
 class Node:
 
-    def __init__(self, problem, parent, action, state):
+    def __init__(self, problem, parent, action, state, priority):
         self.problem = problem
         self.parent = parent
         self.action = action
         self.state = state
+        self.priority = priority
         
     def printState(self):
         print " "
@@ -34,7 +35,7 @@ class Node:
         print "Parent: ", self.parent
         print "Action: ", self.action
         print "State: ", self.state
-        print "Successors: ", self.successors
+        print "Priority: ", self.priority
         print " "
             
         
@@ -117,7 +118,7 @@ def depthFirstSearch(problem):
         successors = problem.getSuccessors(current.state)
         child = None
         for i in successors:
-            child = Node(problem, current, i[1], i[0])
+            child = Node(problem, current, i[1], i[0], 1)
             if isInFrontier(child)==False and isInExplored(child)==False:
                 frontier.push(child)
                 frontierSet.add((i[0], i[2]))
@@ -144,7 +145,7 @@ def depthFirstSearch(problem):
     
     
     #Initialize Problem
-    head = Node(problem, None, None, problem.getStartState())
+    head = Node(problem, None, None, problem.getStartState(), 1)
     current = head
     frontier = util.Stack()
     frontier.push(current)
@@ -196,7 +197,7 @@ def breadthFirstSearch(problem):
     
     
     #Initialize Problem
-    head = Node(problem, None, None, problem.getStartState())
+    head = Node(problem, None, None, problem.getStartState(), 1)
     current = head
     
     if problem.isGoalState(current.state):
@@ -216,7 +217,7 @@ def breadthFirstSearch(problem):
         successors = problem.getSuccessors(current.state)
         child = None
         for i in successors:
-            child = Node(problem, current, i[1], i[0])
+            child = Node(problem, current, i[1], i[0], 1)
             if isInFrontier(child)==False and isInExplored(child)==False:
                 if problem.isGoalState(child.state):
                     return getSolution(child)
@@ -227,26 +228,34 @@ def breadthFirstSearch(problem):
 def uniformCostSearch(problem):
     "Search the node of least total cost first. "
     "*** YOUR CODE HERE ***"
+        
+    #  TODO:
+    #  ideally figure out how to replace frontier node with child
+    #  (this is the last line of UNIFORM-COST-SEARCH)
+    #  It should be nearly as efficient (in small cases) to just add the new child
+    #  into the frontier, without removing the old one.
+    
+    #  Note:
+    #  the frontierSet can't add duplicate values to it, so it might try to 
+    #  remove things that don't exist, that's why I use .discard() instead of .remove()
     
     def isInFrontier(node):
-        tempStack = util.Queue()
-        while frontier.isEmpty() == False:
-            tempNode = frontier.pop()
-            tempStack.push(tempNode)
-            if(tempNode.getState == node.getState):
-                while tempStack.isEmpty() == False:
-                    tempNode = tempStack.pop()
-                    frontier.push(tempNode)
-                return True;
-        while tempStack.isEmpty() == False:
-            tempNode = tempStack.pop()
-            frontier.push(tempNode)
+        for x in frontierSet:
+            if node.state == x[0]:
+                return True
+        return False
+    
+    def hasHigherPathCost(node):
+        for x in frontierSet:
+            if node.state == x[0]:
+                
+                return True
         return False
             
     def isInExplored(node):
-        state = node.getState()
-        if state in exploredSet.keys():
-            return True
+        for x in exploredSet:
+            if node.state == x[0]:
+                return True
         return False
     
     def getSolution(node):
@@ -257,48 +266,34 @@ def uniformCostSearch(problem):
         solution.reverse()
         return solution
     
-    
     #Initialize Problem
-    head = Node(problem, None, None)
-    headPriority = 0
+    head = Node(problem, None, None, problem.getStartState(), 0)
     current = head
-    currentPriority = headPriority
-    
-    
+    frontier = util.PriorityQueue()
+    frontier.push(current, current.priority)
+    frontierSet = set()
+    frontierSet.add((current.state, current.priority))
+    exploredSet = set()
 
-    frontier = util.PriorityQueue
-    frontier.push(current, currentPriority)
-    exploredSet = {}
-    
-    #  TODO:
-    #
-    #  Must store Frontier keys in set/dictionary
-    #  Because popping on the priority queue doesn't 
-    #  tell you what the priority was, so pushing 
-    #  again won't work since there will be less info
-    #
-    #  ideally figure out how to replace frontier node with child
-    #  (this is the last line of UNIFORM-COST-SEARCH)
-    #  It should be nearly as efficient (in small cases) to just add the new child
-    #  into the frontier, without removing the old one.
-    
-    
     while True:
         child = None
         if frontier.isEmpty():
             return None
         current = frontier.pop()
-        if problem.isGoalState(current.getState()):
+        frontierSet.discard((current.state, current.priority))
+        if problem.isGoalState(current.state):
             return getSolution(current)
-        exploredSet[current.getState()] = current
+        exploredSet.add((current.state, current.priority))
         
-        successors = current.getSuccessors()
+        successors = problem.getSuccessors(current.state)
         for i in successors:
-            child = Node(problem, current, i[1])
+            child = Node(problem, current, i[1], i[0], i[2])
             if isInFrontier(child)==False and isInExplored(child)==False:
-                if problem.isGoalState(child.getState()):
-                    return getSolution(child)
-                frontier.push(child)
+                frontier.push(child, child.priority)
+                frontierSet.add((i[0], i[2]))
+            elif isInFrontier(child)==True and hasHigherPathCost(child):
+                frontier.push(child, child.priority)
+                frontierSet.add((i[0], i[2]))
         
     util.raiseNotDefined()
 
