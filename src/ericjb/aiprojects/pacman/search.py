@@ -109,8 +109,7 @@ def depthFirstSearch(problem):
 
 #===============================================================================
 # expandNodeToFrontier(parent) pushes previously unseen nodes onto the stack
-# isInFrontier(node) pops and pushes all nodes in frontier stack to find a match
-# isInExplored(node) uses keys (state tuples) to see if node has been explored
+# isInFrontier(node) and isInExplored(node) use Sets of tuples (state, priority)
 # getSolution(node) goes back from goal node to start node, generating solution
 # The DFS solution implemented follows straight from GRAPH-Search, [p 77]
 #===============================================================================
@@ -150,7 +149,7 @@ def depthFirstSearch(problem):
     frontier = util.Stack()
     frontier.push(current)
     frontierSet = set()
-    frontierSet.add((current, 1))
+    frontierSet.add((current.state, 1))
     exploredSet = set()
     expandNodeToFrontier()
 
@@ -167,29 +166,24 @@ def depthFirstSearch(problem):
         expandNodeToFrontier()
     util.raiseNotDefined()
 
+
+
+
+
 def breadthFirstSearch(problem):
     "Search the shallowest nodes in the search tree first. [p 81]"
     "*** YOUR CODE HERE ***"
     
     def isInFrontier(node):
-        tempStack = util.Queue()
-        while frontier.isEmpty() == False:
-            tempNode = frontier.pop()
-            tempStack.push(tempNode)
-            if(tempNode.getState == node.getState):
-                while tempStack.isEmpty() == False:
-                    tempNode = tempStack.pop()
-                    frontier.push(tempNode)
-                return True;
-        while tempStack.isEmpty() == False:
-            tempNode = tempStack.pop()
-            frontier.push(tempNode)
+        for x in frontierSet:
+            if node.state == x[0]:
+                return True
         return False
             
     def isInExplored(node):
-        state = node.getState()
-        if state in exploredSet.keys():
-            return True
+        for x in exploredSet:
+            if node.state == x[0]:
+                return True
         return False
     
     def getSolution(node):
@@ -202,30 +196,32 @@ def breadthFirstSearch(problem):
     
     
     #Initialize Problem
-    head = Node(problem, None, None)
+    head = Node(problem, None, None, problem.getStartState())
     current = head
     
-    if problem.isGoalState(current.getState()):
+    if problem.isGoalState(current.state):
         return getSolution(current)
     frontier = util.Queue()
     frontier.push(current)
-    exploredSet = {}
+    frontierSet = set()
+    frontierSet.add((current.state, 1))
+    exploredSet = set()
     
     while True:
-        child = None
         if frontier.isEmpty():
             return None
         current = frontier.pop()
-        exploredSet[current.getState()] = current
-        
-        successors = current.getSuccessors()
+        frontierSet.remove((current.state, 1))
+        exploredSet.add((current.state, 1))
+        successors = problem.getSuccessors(current.state)
+        child = None
         for i in successors:
-            child = Node(problem, current, i[1])
+            child = Node(problem, current, i[1], i[0])
             if isInFrontier(child)==False and isInExplored(child)==False:
-                if problem.isGoalState(child.getState()):
+                if problem.isGoalState(child.state):
                     return getSolution(child)
                 frontier.push(child)
-                
+                frontierSet.add((i[0], i[2]))                      
     util.raiseNotDefined()
             
 def uniformCostSearch(problem):
