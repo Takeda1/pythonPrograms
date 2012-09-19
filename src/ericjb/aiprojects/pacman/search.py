@@ -196,7 +196,7 @@ def breadthFirstSearch(problem):
     #Initialize Problem
     head = Node(problem, None, None, problem.getStartState(), 1)
     current = head
-    
+    print "Current's State: ", current.state
     if problem.isGoalState(current.state):
         return getSolution(current)
     frontier = util.Queue()

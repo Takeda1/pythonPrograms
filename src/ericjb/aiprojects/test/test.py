@@ -28,3 +28,19 @@ frontierSet.add(aTuple2)
 print frontierSet
 frontierSet.remove(('crap', 1))
 print frontierSet
+
+print len(newList)
+
+newSet = set([(1, 2), (2, 3), (3, 4), (4, 5)])
+newTriple = (55, 33, newSet)
+newTriple[2].add((5, 6))
+for i in newTriple[2]:
+    print i
+x,y = newTriple[0],newTriple[1]
+
+print x,y
+
+newFrozenSet = frozenset(newSet)
+
+print newFrozenSet
+print newSet

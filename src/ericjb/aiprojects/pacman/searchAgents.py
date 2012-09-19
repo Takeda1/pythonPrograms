@@ -263,7 +263,7 @@ class CornersProblem(search.SearchProblem):
     You must select a suitable state space and successor function
     """
     
-    def __init__(self, startingGameState):
+    def __init__(self, startingGameState, costFn = lambda x: 1):
         """
         Stores the walls, pacman's starting position and corners.
         """
@@ -277,15 +277,29 @@ class CornersProblem(search.SearchProblem):
         self._expanded = 0 # Number of search nodes expanded
         
         "*** YOUR CODE HERE ***"
+        self.costFn = costFn
+        self.startState = (startingGameState.getPacmanPosition()[0], startingGameState.getPacmanPosition()[1], frozenset([]))
+        self._visited, self._visitedlist, self._expanded = {}, [], 0
         
     def getStartState(self):
         "Returns the start state (in your state space, not the full Pacman state space)"
         "*** YOUR CODE HERE ***"
+        return self.startState
         util.raiseNotDefined()
         
     def isGoalState(self, state):
         "Returns whether this search state is a goal state of the problem"
         "*** YOUR CODE HERE ***"
+        print "state: ", state
+        if state[0] == 5 and state[1] == 1 and state[2] == frozenset([(6, 1)]):
+            print 'Crap'
+        x,y = state[0],state[1]
+        if len(state)>=4:
+            for corner in self.corners:
+                if (x,y) == corner:
+                    return True
+        return False
+
         util.raiseNotDefined()
              
     def getSuccessors(self, state):
@@ -310,7 +324,19 @@ class CornersProblem(search.SearchProblem):
             #     hitsWall = self.walls[nextx][nexty]
             
             "*** YOUR CODE HERE ***"
-            
+
+            x,y = state[0],state[1]
+            dx, dy = Actions.directionToVector(action)
+            nextx, nexty = int(x + dx), int(y + dy)
+            if not self.walls[nextx][nexty]:
+                tempSet = set([])
+                for corner in self.corners:
+                    if (x,y) == corner:
+                        tempSet.add((x, y))
+                finalSet = frozenset(tempSet)
+                nextState = (nextx, nexty, finalSet)
+                cost = self.costFn(nextState)
+                successors.append( ( nextState, action, cost) )
         self._expanded += 1
         return successors
 
