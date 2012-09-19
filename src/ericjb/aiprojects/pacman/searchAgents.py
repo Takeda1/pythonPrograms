@@ -279,7 +279,6 @@ class CornersProblem(search.SearchProblem):
         "*** YOUR CODE HERE ***"
         self.costFn = costFn
         self.startState = (startingGameState.getPacmanPosition()[0], startingGameState.getPacmanPosition()[1], frozenset([]))
-        self._visited, self._visitedlist, self._expanded = {}, [], 0
         
     def getStartState(self):
         "Returns the start state (in your state space, not the full Pacman state space)"
@@ -290,13 +289,10 @@ class CornersProblem(search.SearchProblem):
     def isGoalState(self, state):
         "Returns whether this search state is a goal state of the problem"
         "*** YOUR CODE HERE ***"
-        print "state: ", state
-        if state[0] == 5 and state[1] == 1 and state[2] == frozenset([(6, 1)]):
-            print 'Crap'
         x,y = state[0],state[1]
-        if len(state)>=4:
+        if len(state[2])>=3:
             for corner in self.corners:
-                if (x,y) == corner:
+                if (x,y) == corner and (x,y) not in state[2]:
                     return True
         return False
 
@@ -326,12 +322,14 @@ class CornersProblem(search.SearchProblem):
             "*** YOUR CODE HERE ***"
 
             x,y = state[0],state[1]
+            tempSet = set([])
+            for i in state[2]:
+                tempSet.add(i)
             dx, dy = Actions.directionToVector(action)
             nextx, nexty = int(x + dx), int(y + dy)
             if not self.walls[nextx][nexty]:
-                tempSet = set([])
                 for corner in self.corners:
-                    if (x,y) == corner:
+                    if (x,y) == corner and (x,y) not in tempSet:
                         tempSet.add((x, y))
                 finalSet = frozenset(tempSet)
                 nextState = (nextx, nexty, finalSet)

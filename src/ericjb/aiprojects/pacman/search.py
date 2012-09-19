@@ -180,7 +180,7 @@ def breadthFirstSearch(problem):
             
     def isInExplored(node):
         for x in exploredSet:
-            if node.state == x[0]:
+            if node.state == x[0]:    
                 return True
         return False
     
@@ -196,7 +196,6 @@ def breadthFirstSearch(problem):
     #Initialize Problem
     head = Node(problem, None, None, problem.getStartState(), 1)
     current = head
-    print "Current's State: ", current.state
     if problem.isGoalState(current.state):
         return getSolution(current)
     frontier = util.Queue()
@@ -219,7 +218,8 @@ def breadthFirstSearch(problem):
                 if problem.isGoalState(child.state):
                     return getSolution(child)
                 frontier.push(child)
-                frontierSet.add((i[0], i[2]))                      
+                frontierSet.add((i[0], i[2]))
+                                
     util.raiseNotDefined()
             
 def uniformCostSearch(problem):
