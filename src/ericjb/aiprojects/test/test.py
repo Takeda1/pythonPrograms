@@ -14,3 +14,17 @@ for i in newList:
 print newList
 newList.reverse()
 print newList
+
+aDict1 = {'crap': 5}
+aDict2 = {'yay': 3}
+
+aTuple1 = ('crap', 1)
+aTuple2 = ('yay', 2)
+
+frontierSet = set()
+frontierSet.add(aTuple1)
+frontierSet.add(aTuple2)
+
+print frontierSet
+frontierSet.remove(('crap', 1))
+print frontierSet

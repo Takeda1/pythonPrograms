@@ -22,37 +22,12 @@ import util
 #===============================================================================
 class Node:
 
-    def __init__(self, problem, parent, action):
+    def __init__(self, problem, parent, action, state):
         self.problem = problem
         self.parent = parent
         self.action = action
-        if parent is None:
-            self.state = problem.getStartState()
-        else:
-            self.state = parent.childState(action)
-        self.successors = self.problem.getSuccessors(self.state)
+        self.state = state
         
-    def getState(self):
-        return self.state
-        
-    def getSuccessors(self):
-        return self.successors
-    def childState(self, direction):
-        from game import Directions
-        n = Directions.NORTH
-        e = Directions.EAST
-        s = Directions.SOUTH
-        w = Directions.WEST
-        if direction == n:
-            return (self.state[0], self.state[1]+1)
-        elif direction == e:
-            return (self.state[0]+1, self.state[1])
-        elif direction == s:
-            return (self.state[0], self.state[1]-1)
-        elif direction == w:
-            return (self.state[0]-1, self.state[1])
-        else:
-            return ('Error')
     def printState(self):
         print " "
         print "NODE STATE: "
@@ -139,33 +114,25 @@ def depthFirstSearch(problem):
 # getSolution(node) goes back from goal node to start node, generating solution
 # The DFS solution implemented follows straight from GRAPH-Search, [p 77]
 #===============================================================================
-    def expandNodeToFrontier(parent):
-        successors = parent.getSuccessors()
+    def expandNodeToFrontier():
+        successors = problem.getSuccessors(current.state)
         child = None
         for i in successors:
-            child = Node(problem, parent, i[1])
+            child = Node(problem, current, i[1], i[0])
             if isInFrontier(child)==False and isInExplored(child)==False:
                 frontier.push(child)
+                frontierSet.add((i[0], i[2]))
             
     def isInFrontier(node):
-        tempStack = util.Stack()
-        while frontier.isEmpty() == False:
-            tempNode = frontier.pop()
-            tempStack.push(tempNode)
-            if(tempNode.getState == node.getState):
-                while tempStack.isEmpty() == False:
-                    tempNode = tempStack.pop()
-                    frontier.push(tempNode)
-                return True;
-        while tempStack.isEmpty() == False:
-            tempNode = tempStack.pop()
-            frontier.push(tempNode)
+        for x in frontierSet:
+            if node.state == x[0]:
+                return True
         return False
             
     def isInExplored(node):
-        state = node.getState()
-        if state in exploredSet.keys():
-            return True
+        for x in exploredSet:
+            if node.state == x[0]:
+                return True
         return False
     
     def getSolution(node):
@@ -176,22 +143,28 @@ def depthFirstSearch(problem):
         solution.reverse()
         return solution
     
+    
     #Initialize Problem
-    head = Node(problem, None, None)
+    head = Node(problem, None, None, problem.getStartState())
     current = head
     frontier = util.Stack()
-    exploredSet = {}
-    expandNodeToFrontier(head)
+    frontier.push(current)
+    frontierSet = set()
+    frontierSet.add((current, 1))
+    exploredSet = set()
+    expandNodeToFrontier()
+
     
     while True:
         if frontier.isEmpty():
             return None
         current = frontier.pop()
-        if problem.isGoalState(current.getState()):
+        frontierSet.remove((current.state, 1))
+        if problem.isGoalState(current.state):
             solution = getSolution(current)
             return solution
-        exploredSet[current.getState()] = current
-        expandNodeToFrontier(current)
+        exploredSet.add((current.state, 1))
+        expandNodeToFrontier()
     util.raiseNotDefined()
 
 def breadthFirstSearch(problem):
