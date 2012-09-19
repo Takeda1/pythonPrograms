@@ -14,11 +14,8 @@ by Pacman agents (in searchAgents.py).
 import util
 
 #===============================================================================
-# NODE CLASS:
-# getState()
-# getSuccessors()
-# childState(direction) returns state of child
-# Slightly more work is done in my node class than in the book's [p 79]
+# NODE CLASS 
+# with printState()
 #===============================================================================
 class Node:
 
@@ -231,10 +228,9 @@ def uniformCostSearch(problem):
         
     #  TODO:
     #  ideally figure out how to replace frontier node with child
-    #  (this is the last line of UNIFORM-COST-SEARCH)
+    #  (this is the last line of UNIFORM-COST-SEARCH, p. 84)
     #  It should be nearly as efficient (in small cases) to just add the new child
     #  into the frontier, without removing the old one.
-    
     #  Note:
     #  the frontierSet can't add duplicate values to it, so it might try to 
     #  remove things that don't exist, that's why I use .discard() instead of .remove()
@@ -248,7 +244,6 @@ def uniformCostSearch(problem):
     def hasHigherPathCost(node):
         for x in frontierSet:
             if node.state == x[0]:
-                
                 return True
         return False
             
@@ -307,6 +302,65 @@ def nullHeuristic(state, problem=None):
 def aStarSearch(problem, heuristic=nullHeuristic):
     "Search the node that has the lowest combined cost and heuristic first."
     "*** YOUR CODE HERE ***"
+    
+    def isInFrontier(node):
+        for x in frontierSet:
+            if node.state == x[0]:
+                return True
+        return False
+    
+    def hasHigherPathCost(node):
+        for x in frontierSet:
+            if node.state == x[0]:
+                return True
+        return False
+            
+    def isInExplored(node):
+        for x in exploredSet:
+            if node.state == x[0]:
+                return True
+        return False
+    
+    def getSolution(node):
+        solution = [node.action]
+        while node.parent.action != None:
+            node = node.parent
+            solution.append(node.action)
+        solution.reverse()
+        return solution
+    
+    def bestEstimate(state, priority):
+        return (heuristic(state, problem)+priority)
+        
+    
+    #Initialize Problem
+    head = Node(problem, None, None, problem.getStartState(), 0)
+    current = head
+    frontier = util.PriorityQueue()
+    frontier.push(current, current.priority)
+    frontierSet = set()
+    frontierSet.add((current.state, current.priority))
+    exploredSet = set()
+
+    while True:
+        child = None
+        if frontier.isEmpty():
+            return None
+        current = frontier.pop()
+        frontierSet.discard((current.state, current.priority))
+        if problem.isGoalState(current.state):
+            return getSolution(current)
+        exploredSet.add((current.state, current.priority))
+        successors = problem.getSuccessors(current.state)
+        for i in successors:
+            child = Node(problem, current, i[1], i[0], bestEstimate(i[0], i[2]))
+            if isInFrontier(child)==False and isInExplored(child)==False:
+                frontier.push(child, child.priority)
+                frontierSet.add((child.state, child.priority))
+            elif isInFrontier(child)==True and hasHigherPathCost(child):
+                frontier.push(child, child.priority)
+                frontierSet.add((child.state, child.priority))
+        
     util.raiseNotDefined()    
     
 # Abbreviations
