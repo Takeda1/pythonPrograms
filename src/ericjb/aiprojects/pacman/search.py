@@ -12,6 +12,8 @@ by Pacman agents (in searchAgents.py).
 """
 
 import util
+import heapq
+import itertools
 
 #===============================================================================
 # NODE CLASS 
@@ -19,12 +21,11 @@ import util
 #===============================================================================
 class Node:
 
-    def __init__(self, problem, parent, action, state, priority):
+    def __init__(self, problem, parent, action, state):
         self.problem = problem
         self.parent = parent
         self.action = action
         self.state = state
-        self.priority = priority
         
     def printState(self):
         print " "
@@ -32,9 +33,47 @@ class Node:
         print "Parent: ", self.parent
         print "Action: ", self.action
         print "State: ", self.state
-        print "Priority: ", self.priority
         print " "
+
+class BetterPriorityQueue:
+    """
+    This Class is a combination of the util.PriorityQueue 
+    and information found on http://docs.python.org/library/heapq.html
+    """  
+    def  __init__(self):  
+        self.heap = []
+        self.entry_finder = {}
+        self.REMOVED = '<removed-item>'
+        self.counter = itertools.count()
+        
+    def isEmpty(self):
+        return len(self.entry_finder) == 0
+    
+    def add_item(self, item, priority):
+        if item.state in self.entry_finder:
+            if priority <= self.entry_finder[item.state][0]:
+                return
+            else:
+                self.remove_item(item)
             
+        count = next(self.counter)
+        entry = [priority, count, item]
+        self.entry_finder[item.state] = entry
+        heapq.heappush(self.heap, entry)
+    
+    def remove_item(self, item):
+        entry = self.entry_finder.pop(item.state)
+        entry[-1] = self.REMOVED
+    
+    def pop_item(self):
+        while self.heap:
+            priority, count, item = heapq.heappop(self.heap)
+            if item is not self.REMOVED:
+                del self.entry_finder[item.state]
+                return item
+        raise KeyError('pop from an empty priority queue')
+        
+
         
 class SearchProblem:
     """
@@ -138,11 +177,10 @@ def depthFirstSearch(problem):
             node = node.parent
             solution.append(node.action)
         solution.reverse()
-        return solution
-    
+        return solution    
     
     #Initialize Problem
-    head = Node(problem, None, None, problem.getStartState(), 1)
+    head = Node(problem, None, None, problem.getStartState())
     current = head
     frontier = util.Stack()
     frontier.push(current)
@@ -150,7 +188,6 @@ def depthFirstSearch(problem):
     frontierSet.add((current.state, 1))
     exploredSet = set()
     expandNodeToFrontier()
-
     
     while True:
         if frontier.isEmpty():
@@ -163,9 +200,6 @@ def depthFirstSearch(problem):
         exploredSet.add((current.state, 1))
         expandNodeToFrontier()
     util.raiseNotDefined()
-
-
-
 
 
 def breadthFirstSearch(problem):
@@ -190,11 +224,10 @@ def breadthFirstSearch(problem):
             node = node.parent
             solution.append(node.action)
         solution.reverse()
-        return solution
-    
+        return solution 
     
     #Initialize Problem
-    head = Node(problem, None, None, problem.getStartState(), 1)
+    head = Node(problem, None, None, problem.getStartState())
     current = head
     if problem.isGoalState(current.state):
         return getSolution(current)
@@ -213,14 +246,14 @@ def breadthFirstSearch(problem):
         successors = problem.getSuccessors(current.state)
         child = None
         for i in successors:
-            child = Node(problem, current, i[1], i[0], 1)
+            child = Node(problem, current, i[1], i[0])
             if isInFrontier(child)==False and isInExplored(child)==False:
                 if problem.isGoalState(child.state):
                     return getSolution(child)
                 frontier.push(child)
-                frontierSet.add((i[0], i[2]))
-                                
+                frontierSet.add((i[0], i[2]))                     
     util.raiseNotDefined()
+            
             
 def uniformCostSearch(problem):
     "Search the node of least total cost first. "
@@ -234,22 +267,10 @@ def uniformCostSearch(problem):
     #  Note:
     #  the frontierSet can't add duplicate values to it, so it might try to 
     #  remove things that don't exist, that's why I use .discard() instead of .remove()
-    
-    def isInFrontier(node):
-        for x in frontierSet:
-            if node.state == x[0]:
-                return True
-        return False
-    
-    def hasHigherPathCost(node):
-        for x in frontierSet:
-            if node.state == x[0]:
-                return True
-        return False
             
     def isInExplored(node):
         for x in exploredSet:
-            if node.state == x[0]:
+            if node.state == x:
                 return True
         return False
     
@@ -259,37 +280,29 @@ def uniformCostSearch(problem):
             node = node.parent
             solution.append(node.action)
         solution.reverse()
-        return solution
+        return solution 
     
     #Initialize Problem
-    head = Node(problem, None, None, problem.getStartState(), 0)
+    head = Node(problem, None, None, problem.getStartState())
     current = head
-    frontier = util.PriorityQueue()
-    frontier.push(current, current.priority)
-    frontierSet = set()
-    frontierSet.add((current.state, current.priority))
+    frontier = BetterPriorityQueue()
+    frontier.add_item(current, 0)
     exploredSet = set()
+    testCounter = 0
 
     while True:
         child = None
         if frontier.isEmpty():
             return None
-        current = frontier.pop()
-        frontierSet.discard((current.state, current.priority))
+        current = frontier.pop_item()
         if problem.isGoalState(current.state):
             return getSolution(current)
-        exploredSet.add((current.state, current.priority))
-        
+        exploredSet.add(current.state)
         successors = problem.getSuccessors(current.state)
         for i in successors:
-            child = Node(problem, current, i[1], i[0], i[2])
-            if isInFrontier(child)==False and isInExplored(child)==False:
-                frontier.push(child, child.priority)
-                frontierSet.add((i[0], i[2]))
-            elif isInFrontier(child)==True and hasHigherPathCost(child):
-                frontier.push(child, child.priority)
-                frontierSet.add((i[0], i[2]))
-        
+            child = Node(problem, current, i[1], i[0])
+            if isInExplored(child)==False:
+                frontier.add_item(child, i[2])
     util.raiseNotDefined()
 
 def nullHeuristic(state, problem=None):
@@ -331,7 +344,6 @@ def aStarSearch(problem, heuristic=nullHeuristic):
     
     def bestEstimate(state, priority):
         return (heuristic(state, problem)+priority)
-        
     
     #Initialize Problem
     head = Node(problem, None, None, problem.getStartState(), 0)
@@ -360,7 +372,6 @@ def aStarSearch(problem, heuristic=nullHeuristic):
             elif isInFrontier(child)==True and hasHigherPathCost(child):
                 frontier.push(child, child.priority)
                 frontierSet.add((child.state, child.priority))
-        
     util.raiseNotDefined()    
     
 # Abbreviations
