@@ -44,3 +44,9 @@ newFrozenSet = frozenset(newSet)
 
 print newFrozenSet
 print newSet
+
+print newList
+
+numberList = [6, 5, 4, 3, 2, 1]
+maxValue = min(numberList)
+print maxValue

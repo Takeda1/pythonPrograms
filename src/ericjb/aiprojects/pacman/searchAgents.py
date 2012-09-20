@@ -370,7 +370,45 @@ def cornersHeuristic(state, problem):
     walls = problem.walls # These are the walls of the maze, as a Grid (game.py)
     
     "*** YOUR CODE HERE ***"
-    return 0 # Default to trivial solution
+    """
+    This heuristic checks the distance to the closest unvisited corner,
+    then checks the distance from this unvisited corner to the 
+    next closest remaining unvisited corner, for all corners.
+    The heuristic returns the sum of these distances.
+    """
+    
+    def notVisited(corner):
+        for i in state[2]:
+            if corner == i:
+                return False
+        return True
+    
+    def closestDistance(xy1, points):
+        minDistance = 999
+        visitedPoint = None
+        for xy2 in points:
+            distance = ( (xy1[0] - xy2[0]) ** 2 + (xy1[1] - xy2[1]) ** 2 ) ** 0.5
+            if distance < minDistance:
+                minDistance = distance
+                visitedPoint = xy2
+        if visitedPoint != None:
+            points.remove(visitedPoint)
+        return minDistance, points, visitedPoint
+    
+    def cornersNotVisited(corners):
+        unVisited = []
+        for corner in corners:
+            if notVisited(corner):
+                unVisited.append(corner)
+        return unVisited
+    
+    xy1 = (state[0], state[1])
+    unVisited = cornersNotVisited(corners)
+    heuristic = 0
+    while len(unVisited) > 0:
+        nextClosestDistance,unVisited,xy1 = closestDistance(xy1, unVisited)
+        heuristic += nextClosestDistance
+    return heuristic
 
 class AStarCornersAgent(SearchAgent):
     "A SearchAgent for FoodSearchProblem using A* and your foodHeuristic"
