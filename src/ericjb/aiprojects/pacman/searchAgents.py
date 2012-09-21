@@ -387,7 +387,8 @@ def cornersHeuristic(state, problem):
         minDistance = 999
         visitedPoint = None
         for xy2 in points:
-            distance = ( (xy1[0] - xy2[0]) ** 2 + (xy1[1] - xy2[1]) ** 2 ) ** 0.5
+            #distance = round(( (xy1[0] - xy2[0]) ** 2 + (xy1[1] - xy2[1]) ** 2 ) ** 0.5)
+            distance = abs(xy1[0] - xy2[0]) + abs(xy1[1] - xy2[1])
             if distance < minDistance:
                 minDistance = distance
                 visitedPoint = xy2
@@ -403,12 +404,81 @@ def cornersHeuristic(state, problem):
         return unVisited
     
     xy1 = (state[0], state[1])
+    print "State: ",xy1
+    unVisited = cornersNotVisited(corners)
+    heuristic = 0
+    nextClosestDistance = 0
+    nextClosestDistance,unVisited,xy1 = closestDistance(xy1, unVisited)
+    while len(unVisited) > 0:
+        nextClosestDistance,unVisited,xy1 = closestDistance(xy1, unVisited)
+        heuristic += nextClosestDistance
+    print heuristic
+    print " "
+    return heuristic
+    return 0
+
+def cornersFastInconsistentHeuristic(state, problem):
+    """
+    A heuristic for the CornersProblem that you defined.
+    
+        state:     The current search state 
+                         (a data structure you chose in your search problem)
+        
+        problem: The CornersProblem instance for this layout.    
+        
+    This function should always return a number that is a lower bound
+    on the shortest path from the state to a goal of the problem; i.e.
+    it should be admissible.    (You need not worry about consistency for
+    this heuristic to receive full credit.)
+    """
+    corners = problem.corners # These are the corner coordinates
+    walls = problem.walls # These are the walls of the maze, as a Grid (game.py)
+    
+    "*** YOUR CODE HERE ***"
+    """
+    This heuristic checks the distance to the closest unvisited corner,
+    then checks the distance from this unvisited corner to the 
+    next closest remaining unvisited corner, for all corners.
+    The heuristic returns the sum of these distances.
+    """
+    
+    def notVisited(corner):
+        for i in state[2]:
+            if corner == i:
+                return False
+        return True
+    
+    def closestDistance(xy1, points):
+        minDistance = 999
+        visitedPoint = None
+        for xy2 in points:
+            #distance = round(( (xy1[0] - xy2[0]) ** 2 + (xy1[1] - xy2[1]) ** 2 ) ** 0.5)
+            distance = abs(xy1[0] - xy2[0]) + abs(xy1[1] - xy2[1])
+            if distance < minDistance:
+                minDistance = distance
+                visitedPoint = xy2
+        if visitedPoint != None:
+            points.remove(visitedPoint)
+        return minDistance, points, visitedPoint
+    
+    def cornersNotVisited(corners):
+        unVisited = []
+        for corner in corners:
+            if notVisited(corner):
+                unVisited.append(corner)
+        return unVisited
+    
+    xy1 = (state[0], state[1])
+    print "State: ",xy1
     unVisited = cornersNotVisited(corners)
     heuristic = 0
     while len(unVisited) > 0:
         nextClosestDistance,unVisited,xy1 = closestDistance(xy1, unVisited)
         heuristic += nextClosestDistance
+    print heuristic
+    print " "
     return heuristic
+    return 0
 
 class AStarCornersAgent(SearchAgent):
     "A SearchAgent for FoodSearchProblem using A* and your foodHeuristic"

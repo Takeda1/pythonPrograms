@@ -288,7 +288,6 @@ def uniformCostSearch(problem):
     frontier = BetterPriorityQueue()
     frontier.add_item(current, 0)
     exploredSet = set()
-    testCounter = 0
 
     while True:
         child = None
@@ -316,21 +315,9 @@ def aStarSearch(problem, heuristic=nullHeuristic):
     "Search the node that has the lowest combined cost and heuristic first."
     "*** YOUR CODE HERE ***"
     
-    def isInFrontier(node):
-        for x in frontierSet:
-            if node.state == x[0]:
-                return True
-        return False
-    
-    def hasHigherPathCost(node):
-        for x in frontierSet:
-            if node.state == x[0]:
-                return True
-        return False
-            
     def isInExplored(node):
         for x in exploredSet:
-            if node.state == x[0]:
+            if node.state == x:
                 return True
         return False
     
@@ -340,39 +327,32 @@ def aStarSearch(problem, heuristic=nullHeuristic):
             node = node.parent
             solution.append(node.action)
         solution.reverse()
-        return solution
+        return solution 
     
     def bestEstimate(state, priority):
         return (heuristic(state, problem)+priority)
     
     #Initialize Problem
-    head = Node(problem, None, None, problem.getStartState(), 0)
+    head = Node(problem, None, None, problem.getStartState())
     current = head
-    frontier = util.PriorityQueue()
-    frontier.push(current, current.priority)
-    frontierSet = set()
-    frontierSet.add((current.state, current.priority))
+    frontier = BetterPriorityQueue()
+    frontier.add_item(current, 0)
     exploredSet = set()
 
     while True:
         child = None
         if frontier.isEmpty():
             return None
-        current = frontier.pop()
-        frontierSet.discard((current.state, current.priority))
+        current = frontier.pop_item()
         if problem.isGoalState(current.state):
             return getSolution(current)
-        exploredSet.add((current.state, current.priority))
+        exploredSet.add(current.state)
         successors = problem.getSuccessors(current.state)
         for i in successors:
-            child = Node(problem, current, i[1], i[0], bestEstimate(i[0], i[2]))
-            if isInFrontier(child)==False and isInExplored(child)==False:
-                frontier.push(child, child.priority)
-                frontierSet.add((child.state, child.priority))
-            elif isInFrontier(child)==True and hasHigherPathCost(child):
-                frontier.push(child, child.priority)
-                frontierSet.add((child.state, child.priority))
-    util.raiseNotDefined()    
+            child = Node(problem, current, i[1], i[0])
+            if isInExplored(child)==False:
+                frontier.add_item(child, bestEstimate(i[0], i[2]))
+    util.raiseNotDefined()
     
 # Abbreviations
 bfs = breadthFirstSearch

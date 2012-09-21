@@ -110,7 +110,7 @@ def function(priority=0):
 
 function(1)
 function()
-"""
+
 frontier = BetterPriorityQueue()
 
 frontier.add_item('A', 1)
@@ -150,7 +150,9 @@ while frontier.isEmpty() == False:
     print frontier.pop_item()
     print frontier.entry_finder
     print frontier.heap
-
+"""
+for i in range(30):
+    print round((i/3)) *3
 
 
 
