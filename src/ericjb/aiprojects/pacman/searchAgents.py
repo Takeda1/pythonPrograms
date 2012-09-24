@@ -387,7 +387,6 @@ def cornersHeuristic(state, problem):
         minDistance = 999
         visitedPoint = None
         for xy2 in points:
-            #distance = round(( (xy1[0] - xy2[0]) ** 2 + (xy1[1] - xy2[1]) ** 2 ) ** 0.5)
             distance = abs(xy1[0] - xy2[0]) + abs(xy1[1] - xy2[1])
             if distance < minDistance:
                 minDistance = distance
@@ -404,7 +403,6 @@ def cornersHeuristic(state, problem):
         return unVisited
     
     xy1 = (state[0], state[1])
-    print "State: ",xy1
     unVisited = cornersNotVisited(corners)
     heuristic = 0
     nextClosestDistance = 0
@@ -412,8 +410,6 @@ def cornersHeuristic(state, problem):
     while len(unVisited) > 0:
         nextClosestDistance,unVisited,xy1 = closestDistance(xy1, unVisited)
         heuristic += nextClosestDistance
-    print heuristic
-    print " "
     return heuristic
     return 0
 
@@ -469,19 +465,16 @@ def cornersFastInconsistentHeuristic(state, problem):
         return unVisited
     
     xy1 = (state[0], state[1])
-    print "State: ",xy1
     unVisited = cornersNotVisited(corners)
     heuristic = 0
     while len(unVisited) > 0:
         nextClosestDistance,unVisited,xy1 = closestDistance(xy1, unVisited)
         heuristic += nextClosestDistance
-    print heuristic
-    print " "
     return heuristic
     return 0
 
 class AStarCornersAgent(SearchAgent):
-    "A SearchAgent for FoodSearchProblem using A* and your foodHeuristic"
+    "A SearchAgent for FoodSearchProblem using A* and your cornerHeuristic"
     def __init__(self):
         self.searchFunction = lambda prob: search.aStarSearch(prob, cornersHeuristic)
         self.searchType = CornersProblem
@@ -569,7 +562,77 @@ def foodHeuristic(state, problem):
     """
     position, foodGrid = state
     "*** YOUR CODE HERE ***"
-    return 0
+    
+    def accurateDistance(point1, point2, gameState):
+        x1, y1 = point1
+        x2, y2 = point2
+        walls = gameState.getWalls()
+        assert not walls[x1][y1], 'point1 is a wall: ' + point1
+        assert not walls[x2][y2], 'point2 is a wall: ' + str(point2)
+        prob = PositionSearchProblem(gameState, start=point1, goal=point2, warn=False)
+        return len(search.bfs(prob))
+    
+    def generateEdges(vertices):
+        edges = set([])
+        while len(vertices) > 0:
+            xy1 = vertices.pop()
+            for i in vertices:
+                xy2 = i
+                #weight = abs(xy1[0] - xy2[0]) + abs(xy1[1] - xy2[1])
+                weight = accurateDistance(xy1, xy2, problem.startingGameState)
+                edges.add((xy1, xy2, weight))
+        return edges
+    
+    def minEdge():
+        e = None
+        u = None
+        v = None
+        w = 9999
+        for i in edges:
+            if i[2] < w:
+                if i[0] in visited and i[1] in unVisited:
+                    e = i
+                    u = i[0]
+                    v = i[1]
+                    w = i[2]
+                elif i[1] in visited and i[0] in unVisited:
+                    e = i
+                    u = i[0]
+                    v = i[0]
+                    w = i[2]
+        return e, v, w
+
+    food = set([])
+    countX = -1
+    countY = -1
+    for i in foodGrid:
+        countX+=1
+        countY = -1
+        for j in i:
+            countY+=1
+            if j == True:
+                food.add((countX, countY))
+    tempFoodSet = food
+    food = frozenset(food)
+    unVisited = set([])
+    for i in food:
+        unVisited.add(i)
+    if 'edges' not in problem.heuristicInfo.keys():
+        problem.heuristicInfo['edges'] = generateEdges(tempFoodSet)
+    edges = problem.heuristicInfo['edges']
+    
+    heuristic = 0
+    visited = set([])
+    newEdges = set([])
+    if len(unVisited) != 0:
+        visited.add(unVisited.pop())
+    while visited != food:
+        e,v,w = minEdge()
+        unVisited.remove(v)
+        visited.add(v)
+        newEdges.add(e)
+        heuristic+=w
+    return heuristic
     
 class ClosestDotSearchAgent(SearchAgent):
     "Search for all food using a sequence of searches"
@@ -592,11 +655,12 @@ class ClosestDotSearchAgent(SearchAgent):
         "Returns a path (a list of actions) to the closest dot, starting from gameState"
         # Here are some useful elements of the startState
         startPosition = gameState.getPacmanPosition()
-        food = gameState.getFood()
+        foodGrid = gameState.getFood()
         walls = gameState.getWalls()
         problem = AnyFoodSearchProblem(gameState)
 
         "*** YOUR CODE HERE ***"
+        return search.bfs(problem)
         util.raiseNotDefined()
     
 class AnyFoodSearchProblem(PositionSearchProblem):
@@ -633,6 +697,19 @@ class AnyFoodSearchProblem(PositionSearchProblem):
         x,y = state
         
         "*** YOUR CODE HERE ***"
+        foodPositions = set([])
+        countX = -1
+        countY = -1
+        for i in self.food:
+            countX+=1
+            countY = -1
+            for j in i:
+                countY+=1
+                if j == True:
+                    foodPositions.add((countX, countY))
+        if state in foodPositions:
+            return True
+        return False
         util.raiseNotDefined()
 
 ##################
