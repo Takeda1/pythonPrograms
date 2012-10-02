@@ -13,7 +13,7 @@ import time
 import random, util
 import search
 from game import Agent
-import multiAgents #@UnresolvedImport
+import searchAgents #@UnresolvedImport
 import math
 
 def findFastPath(point1, point2, gameState):
@@ -246,6 +246,82 @@ class MinimaxAgent(MultiAgentSearchAgent):
         Returns the total number of agents in the game
     """
     "*** YOUR CODE HERE ***"
+    def maxValue(state, depth):
+        actions = state.getLegalActions(0)
+        #if Directions.STOP in actions: actions.remove(Directions.STOP)
+        if terminalTest(state, depth):
+            debugOut = ""
+            for i in range(2, depth): debugOut +="        "
+            debugOut +="Max:  "+str(utility(state))+"\n"
+            debug.write(debugOut)
+            return utility(state),state,Directions.STOP
+        returnV = -float("inf")
+        returnState = None
+        returnAction = None
+        parentState = state
+        
+        #For each action choose smallest ghost reaction
+        #then choose best action
+        for a in actions:
+            successor = (parentState.generateSuccessor(0, a))
+            agentV = float("inf")
+            newAgentState = successor
+            for i in range(1, len(state.data.agentStates)):
+                newValue,newState,unused = minValue(newAgentState, depth, i)
+                if newValue <= agentV:
+                    agentV = newValue
+                    newAgentState = newState
+            if agentV >= returnV:
+                returnState = successor
+                returnV = agentV
+                returnAction = a
+        debugOut = ""
+        for i in range(2, depth): debugOut +="        "
+        debugOut +="Max:  "+str(utility(state))+"\n"
+        debug.write(debugOut)
+        return returnV,returnState,returnAction
+        
+    def minValue(state, depth, agent):
+        actions = state.getLegalActions(agent)
+        if Directions.STOP in actions: actions.remove(Directions.STOP)
+        if terminalTest(state, depth):
+            debugOut = "    "
+            for i in range(2, depth): debugOut +="        "
+            debugOut +="Min:  "+str(utility(state))+"\n"
+            debug.write(debugOut)
+            return utility(state),state,Directions.STOP
+        returnV = float("inf")
+        returnState = None
+        returnAction = None
+        for a in actions:
+            successor = (state.generateSuccessor(agent, a))
+            newValue,newState,unused = maxValue(successor, (depth+1))
+            if newValue <= returnV:
+                returnState = successor
+                returnV = newValue
+                returnAction = a
+        debugOut = "    "
+        for i in range(2, depth): debugOut +="        "
+        debugOut +="Min:  "+str(utility(state))+"\n"
+        debug.write(debugOut)
+        return returnV,returnState,returnAction
+    
+    def utility(state):
+        return self.evaluationFunction(state)
+    
+    def terminalTest(state, depth):
+        if depth == self.depth or state.isLose() or state.isWin():
+            return True
+        return False
+    
+    debug = open('debug.txt', 'w')
+    debug.write("Start: \n")
+    debug.truncate()
+    v,s,a = maxValue(gameState, 0)
+    print "Minimax Value: ",v
+    debug.close()
+    return a 
+
     util.raiseNotDefined()
 
 class AlphaBetaAgent(MultiAgentSearchAgent):
@@ -258,6 +334,68 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
       Returns the minimax action using self.depth and self.evaluationFunction
     """
     "*** YOUR CODE HERE ***"
+    
+    def maxValue(state, depth, alpha, beta):
+        actions = state.getLegalActions(0)
+        if Directions.STOP in actions: actions.remove(Directions.STOP)
+        if terminalTest(state, depth):
+            return utility(state),state,Directions.STOP,alpha,beta
+        returnV = -float("inf")
+        returnState = None
+        returnAction = None
+        parentState = state
+        
+        #For each action run through all ghost reactions,
+        #updating the best gamestate and value? each time
+        for a in actions:
+            successor = (parentState.generateSuccessor(0, a))
+            agentV = float("inf")
+            newAgentState = successor
+            for i in range(1, len(state.data.agentStates)):
+                newValue,newState,unused,newAlpha,newBeta = minValue(newAgentState, depth, i, alpha, beta)
+                if newValue <= agentV:
+                    agentV = newValue
+                    newAgentState = newState
+            if agentV >= beta: return agentV,state,Directions.STOP,alpha,beta
+            if agentV > alpha: alpha = agentV
+            if agentV >= returnV:
+                returnState = successor
+                returnV = agentV
+                returnAction = a
+        return returnV,returnState,returnAction,alpha,beta
+        
+    def minValue(state, depth, agent, alpha, beta):
+        actions = state.getLegalActions(agent)
+        if Directions.STOP in actions: actions.remove(Directions.STOP)
+        if terminalTest(state, depth):
+            return utility(state),state,Directions.STOP,alpha,beta
+        returnV = float("inf")
+        returnState = None
+        returnAction = None
+        for a in actions:
+            successor = (state.generateSuccessor(agent, a))
+            newValue,newState,unused,newAlpha,newBeta = maxValue(successor, (depth+1), alpha, beta)
+            if newValue <= alpha: return newValue,state,Directions.STOP,alpha,beta
+            if newValue < beta: beta = newValue
+            if newValue <= returnV:
+                returnState = successor
+                returnV = newValue
+                returnAction = a
+        return returnV,returnState,returnAction,alpha,beta
+    
+    def utility(state):
+        return self.evaluationFunction(state)
+    
+    def terminalTest(state, depth):
+        if depth == self.depth or state.isLose() or state.isWin():
+            return True
+        return False
+    
+    v,s,a,alpha,beta = maxValue(gameState, 0, -float("inf"), float("inf"))
+    print "Minimax Value: ",v
+    return a
+
+
     util.raiseNotDefined()
 
 class ExpectimaxAgent(MultiAgentSearchAgent):
@@ -273,6 +411,83 @@ class ExpectimaxAgent(MultiAgentSearchAgent):
       legal moves.
     """
     "*** YOUR CODE HERE ***"
+    
+    def maxValue(state, depth):
+        actions = state.getLegalActions(0)
+        #if Directions.STOP in actions: actions.remove(Directions.STOP)
+        if terminalTest(state, depth):
+            debugOut = ""
+            for i in range(2, depth): debugOut +="        "
+            debugOut +="Max:  "+str(utility(state))+"\n"
+            debug.write(debugOut)
+            return utility(state),state,Directions.STOP
+        returnV = -float("inf")
+        returnState = None
+        returnAction = None
+        parentState = state
+        
+        #For each action choose smallest ghost reaction
+        #then choose best action
+        for a in actions:
+            successor = (parentState.generateSuccessor(0, a))
+            agentV = float("inf")
+            newAgentState = successor
+            for i in range(1, len(state.data.agentStates)):
+                newValue,newState,unused = minValue(newAgentState, depth, i)
+                if newValue <= agentV:
+                    agentV = newValue
+                    newAgentState = newState
+            if agentV >= returnV:
+                returnState = successor
+                returnV = agentV
+                returnAction = a
+        debugOut = ""
+        for i in range(2, depth): debugOut +="        "
+        debugOut +="Max:  "+str(utility(state))+"\n"
+        debug.write(debugOut)
+        return returnV,returnState,returnAction
+        
+    def expectedValue(state, depth, agent):
+        actions = state.getLegalActions(agent)
+        if Directions.STOP in actions: actions.remove(Directions.STOP)
+        if terminalTest(state, depth):
+            debugOut = "    "
+            for i in range(2, depth): debugOut +="        "
+            debugOut +="Min:  "+str(utility(state))+"\n"
+            debug.write(debugOut)
+            return utility(state),state,Directions.STOP
+        returnV = float("inf")
+        returnState = None
+        returnAction = None
+        for a in actions:
+            successor = (state.generateSuccessor(agent, a))
+            newValue,newState,unused = maxValue(successor, (depth+1))
+            if newValue <= returnV:
+                returnState = successor
+                returnV = newValue
+                returnAction = a
+        debugOut = "    "
+        for i in range(2, depth): debugOut +="        "
+        debugOut +="Min:  "+str(utility(state))+"\n"
+        debug.write(debugOut)
+        return returnV,returnState,returnAction
+    
+    def utility(state):
+        return self.evaluationFunction(state)
+    
+    def terminalTest(state, depth):
+        if depth == self.depth or state.isLose() or state.isWin():
+            return True
+        return False
+    
+    debug = open('debug.txt', 'w')
+    debug.write("Start: \n")
+    debug.truncate()
+    v,s,a = maxValue(gameState, 0)
+    print "Minimax Value: ",v
+    debug.close()
+    return a 
+
     util.raiseNotDefined()
 
 def betterEvaluationFunction(currentGameState):
@@ -283,6 +498,7 @@ def betterEvaluationFunction(currentGameState):
     DESCRIPTION: <write something here so we know what you did>
   """
   "*** YOUR CODE HERE ***"
+  
   util.raiseNotDefined()
 
 # Abbreviation
@@ -478,8 +694,8 @@ class SearchAgent(Agent):
         if 'heuristic' not in func.func_code.co_varnames:
             self.searchFunction = func
         else:
-            if heuristic in dir(multiAgents):
-                heur = getattr(multiAgents, heuristic)
+            if heuristic in dir(searchAgents):
+                heur = getattr(searchAgents, heuristic)
             elif heuristic in dir(search):
                 heur = getattr(search, heuristic)
             else:
@@ -488,9 +704,9 @@ class SearchAgent(Agent):
             self.searchFunction = lambda x: func(x, heuristic=heur)
             
         # Get the search problem type from the name
-        if prob not in dir(multiAgents) or not prob.endswith('Problem'): 
+        if prob not in dir(searchAgents) or not prob.endswith('Problem'): 
             raise AttributeError, prob + ' is not a search problem type in SearchAgents.py.'
-        self.searchType = getattr(multiAgents, prob)
+        self.searchType = getattr(searchAgents, prob)
         
     def registerInitialState(self, state):
         """

@@ -12,3 +12,14 @@ python pacman.py -p AlphaBetaAgent -l trappedClassic -a depth=3 -q -n 10
 python pacman.py -p ExpectimaxAgent -l trappedClassic -a depth=3 -q -n 10
 python pacman.py -l smallClassic -p ExpectimaxAgent -a evalFn=better -q -n 10
 python pacman.py -l contestClassic -p ContestAgent -g DirectionalGhost -q -n 10
+
+-p ReflexAgent --frameTime .01 -k 2 -n 10 
+-p ReflexAgent --frameTime .01 -l testClassic -k 2 -n 10 
+-p ReflexAgent --frameTime .01 -l openClassic -n 10 
+-p ReflexAgent --frameTime .01 -g DirectionalGhost -k 2 -n 10 
+-p ReflexAgent --frameTime .01 -l smallClassic -g DirectionalGhost -k 2 -n 10 
+-p MinimaxAgent -a depth=2 -l openClassic
+-p MinimaxAgent -l minimaxClassic -a depth=4
+-p MinimaxAgent -a depth=1 -l smallClassic
+-p MinimaxAgent -a depth=3 -l smallClassic
+-p MinimaxAgent -a depth=3 -l smallClassic --frameTime .03 -g DirectionalGhost 
