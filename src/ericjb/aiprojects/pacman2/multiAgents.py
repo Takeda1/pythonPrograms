@@ -29,6 +29,8 @@ def findFastPath(point1, point2, gameState):
 def pathLengthToClosestFood(gameState):
     solver = ClosestDotSearchAgent()
     solution = solver.findPathToClosestDot(gameState)
+    if solution == None:
+        return 0
     return len(solution)
 def pathToClosestFood(gameState):
     solver = ClosestDotSearchAgent()
@@ -48,26 +50,90 @@ def getFoodPositions(foodGrid):
                 foodPosSet.add((countX, countY))
     return foodPosSet
 
-def getGhosts(pacmanPos, newGhostStates, gameState):
+def getDistances(pacmanPos, newGhostStates, gameState):
     ghostDistSet = set([])
     ghostPosSet = set([])
+    preyDistSet = set([])
+    preyPosSet = set([])
+    capPosSet = gameState.getCapsules()
+    closestGhost = 999
+    closestPrey = 999
+    closestCapDistance = 999
+    capToGhostDistance = 999
+    closestCap = None
+    
     for i in newGhostStates:
-        tempPos = []
-        for j in i.configuration.pos:
-            if isinstance(j, float):
-                tempPos.append(int(math.floor(j)))
+        if i.scaredTimer < 2:
+            tempPos = []
+            for j in i.configuration.pos:
+                if isinstance(j, float):
+                    tempPos.append(int(math.floor(j)))
+                else:
+                    tempPos.append(j)
+            gPos = (tempPos[0], tempPos[1])
+            ghostPosSet.add(gPos)
+            if gPos != pacmanPos:
+                if manhattanDistance(pacmanPos, gPos) < 4:
+                    ghostDistSet.add(len(findFastPath(pacmanPos, gPos, gameState)))
+                else:
+                    ghostDistSet.add(10)
             else:
-                tempPos.append(j)
-        gPos = (tempPos[0], tempPos[1])
-        ghostPosSet.add(gPos)
-        if gPos != pacmanPos:
-            if manhattanDistance(pacmanPos, gPos) < 4:
-                ghostDistSet.add(len(findFastPath(pacmanPos, gPos, gameState)))
-            else:
-                ghostDistSet.add(10)
+                ghostDistSet.add(0)
         else:
-            ghostDistSet.add(0)
-    return ghostPosSet,ghostDistSet
+            tempPos = []
+            for j in i.configuration.pos:
+                if isinstance(j, float):
+                    tempPos.append(int(math.floor(j)))
+                else:
+                    tempPos.append(j)
+            gPos = (tempPos[0], tempPos[1])
+            preyPosSet.add(gPos)
+            if gPos != pacmanPos:
+                if manhattanDistance(pacmanPos, gPos) < 4:
+                    preyDistSet.add(len(findFastPath(pacmanPos, gPos, gameState)))
+                else:
+                    preyDistSet.add(manhattanDistance(pacmanPos, gPos))
+            else:
+                preyDistSet.add(0)
+    for i in ghostDistSet:
+        if i < closestGhost: closestGhost = i
+    for i in preyDistSet:
+        if i < closestPrey: closestPrey = i
+    
+    
+    for i in capPosSet:
+        testCapDistance = manhattanDistance(pacmanPos, i)
+        if testCapDistance < closestCapDistance:
+            closestCap = i
+            closestCapDistance = testCapDistance
+    
+    if pacmanPos != closestCap:
+        if closestCapDistance < 4:
+            closestCapDistance = (len(findFastPath(pacmanPos, closestCap, gameState)))
+        else:
+            closestCapDistance = (closestCapDistance*2)
+    else:
+        closestCapDistance = 0
+    
+    for i in ghostPosSet:
+        if i != closestCap and closestCap != None:
+            tempDist = manhattanDistance(closestCap, i)
+            if tempDist < 4:
+                tempDist = len(findFastPath(closestCap, i, gameState))
+            else: tempDist = (tempDist*2)
+        else:
+            tempDist = 0
+        if tempDist < capToGhostDistance:
+            capToGhostDistance = tempDist
+    
+                
+    
+    
+    
+    
+    
+        
+    return ghostDistSet,preyDistSet,closestGhost,closestPrey,closestCap,closestCapDistance,capToGhostDistance
 
 class ReflexAgent(Agent):
   """
@@ -155,7 +221,7 @@ class ReflexAgent(Agent):
         closestFood = pathLengthToClosestFood(successorGameState)
     #print "Distance to Closest Food: ",closestFood
         
-    ghostPosSet,ghostDistSet = getGhosts(newPos, newGhostStates, successorGameState)
+    ghostPosSet,ghostDistSet = getDistances(newPos, newGhostStates, successorGameState)
     closestGhost = 999
     for i in ghostDistSet:
         if i < closestGhost: closestGhost = i
@@ -416,24 +482,20 @@ class ExpectimaxAgent(MultiAgentSearchAgent):
         actions = state.getLegalActions(0)
         #if Directions.STOP in actions: actions.remove(Directions.STOP)
         if terminalTest(state, depth):
-            debugOut = ""
-            for i in range(2, depth): debugOut +="        "
-            debugOut +="Max:  "+str(utility(state))+"\n"
-            debug.write(debugOut)
             return utility(state),state,Directions.STOP
         returnV = -float("inf")
         returnState = None
         returnAction = None
         parentState = state
         
-        #For each action choose smallest ghost reaction
+        #For each action choose smallest ghost expected value
         #then choose best action
         for a in actions:
             successor = (parentState.generateSuccessor(0, a))
             agentV = float("inf")
             newAgentState = successor
             for i in range(1, len(state.data.agentStates)):
-                newValue,newState,unused = minValue(newAgentState, depth, i)
+                newValue,newState,unused = expectedValue(newAgentState, depth, i)
                 if newValue <= agentV:
                     agentV = newValue
                     newAgentState = newState
@@ -441,36 +503,30 @@ class ExpectimaxAgent(MultiAgentSearchAgent):
                 returnState = successor
                 returnV = agentV
                 returnAction = a
-        debugOut = ""
-        for i in range(2, depth): debugOut +="        "
-        debugOut +="Max:  "+str(utility(state))+"\n"
-        debug.write(debugOut)
         return returnV,returnState,returnAction
-        
+    
+    
     def expectedValue(state, depth, agent):
         actions = state.getLegalActions(agent)
         if Directions.STOP in actions: actions.remove(Directions.STOP)
         if terminalTest(state, depth):
-            debugOut = "    "
-            for i in range(2, depth): debugOut +="        "
-            debugOut +="Min:  "+str(utility(state))+"\n"
-            debug.write(debugOut)
             return utility(state),state,Directions.STOP
-        returnV = float("inf")
         returnState = None
         returnAction = None
+        randMove = random.randint(1, len(actions))
+        count = 0
+        totalValue = 0
         for a in actions:
+            count +=1
             successor = (state.generateSuccessor(agent, a))
             newValue,newState,unused = maxValue(successor, (depth+1))
-            if newValue <= returnV:
+            totalValue +=newValue
+            if count == randMove:
                 returnState = successor
-                returnV = newValue
                 returnAction = a
-        debugOut = "    "
-        for i in range(2, depth): debugOut +="        "
-        debugOut +="Min:  "+str(utility(state))+"\n"
-        debug.write(debugOut)
-        return returnV,returnState,returnAction
+        averageValue = (totalValue/len(actions))
+        returnV = averageValue
+        return returnV,state,returnAction
     
     def utility(state):
         return self.evaluationFunction(state)
@@ -484,22 +540,144 @@ class ExpectimaxAgent(MultiAgentSearchAgent):
     debug.write("Start: \n")
     debug.truncate()
     v,s,a = maxValue(gameState, 0)
-    print "Minimax Value: ",v
+    #print "Minimax Value: ",v
     debug.close()
     return a 
 
     util.raiseNotDefined()
 
 def betterEvaluationFunction(currentGameState):
-  """
-    Your extreme ghost-hunting, pellet-nabbing, food-gobbling, unstoppable
-    evaluation function (question 5).
-
-    DESCRIPTION: <write something here so we know what you did>
-  """
-  "*** YOUR CODE HERE ***"
+    """
+      Your extreme ghost-hunting, pellet-nabbing, food-gobbling, unstoppable
+      evaluation function (question 5).
+    
+      DESCRIPTION: <write something here so we know what you did>
+    """
+    "*** YOUR CODE HERE ***"
+    newPos = currentGameState.getPacmanPosition()
+    oldFood = currentGameState.getFood()
+    newGhostStates = currentGameState.getGhostStates()
+    newScaredTimes = [ghostState.scaredTimer for ghostState in newGhostStates]
+    
+    score = 0
+    foodLeft = None
+    closestFood = None
+    closestGhost = None
+    justAteFoodWeight = 1000
+    justAteGhostWeight = 5000
+    closestFoodWeight = 100
+    maxMazeDistance = (currentGameState.data.layout.height + currentGameState.data.layout.width)
+    closestGhostWeight = 100/maxMazeDistance
+    bestScore = 100000
+    newPoints = currentGameState.data.scoreChange
+    gameScore = round(currentGameState.data.score,-2)
+    gameScoreWeight = bestScore
+    
+    if newPoints >20 and newPoints < 500:
+        justAteGhost = 1
+    else:
+        justAteGhost = 0
+    justAteCap = 0
+    for i in newScaredTimes:
+        if i > 38:
+            justAteCap = 1
+            
+    foodPosSet = getFoodPositions(oldFood)
+    foodLeft = len(foodPosSet)
+    closestFood = pathLengthToClosestFood(currentGameState)    
+    totalFood = len(getFoodPositions(currentGameState.data.layout.food))
+    maxFoodWeight = (totalFood-1)*justAteFoodWeight
+    currentFoodWeight = maxFoodWeight-((foodLeft-1)*justAteFoodWeight)
+    ghostDistSet,preyDistSet,closestGhost,closestPrey,closestCap,closestCapDistance,capToGhostDistance = getDistances(newPos, newGhostStates, currentGameState)
+    
+    if len(ghostDistSet) == 0: ghostsExist = False
+    else: ghostsExist = True
+    if len(preyDistSet) == 0: preyExist = False
+    else: preyExist = True
+    
+    score+=(gameScore*gameScoreWeight)
+    if preyExist == False and closestCapDistance <= 5 and capToGhostDistance >= closestCapDistance:
+        if closestGhost == 0:
+            score -=bestScore
+        else:
+            score += currentFoodWeight+5000
+            score += bestScore/closestCapDistance
+        #print "CLOSE TO POWER PELLET!"
+        #print "Position: ",newPos
+        #print "Distance: ",closestCapDistance
+        #print "GhostCap: ",capToGhostDistance
+        #print "CloseGhst: ",closestGhost
+        #print "Score: ",score
+        score+=gameScore
+                
+    elif ghostsExist == False:
+        if justAteCap == 1 and closestPrey < 4:
+            score += bestScore*3
+        score += (10-closestPrey)*2000
+        score += currentFoodWeight
+        #print "POWER PELLET!"
+        #print "Position: ",newPos
+        #print "Score: ",score
+        #print "ClosePrey: ",closestPrey
+        
+    elif preyExist and ghostsExist:
+        if justAteGhost == True and closestGhost > 1:
+            score += bestScore*8
+            #print "ATE GHOST!"
+            #print "Position: ",newPos
+            #print "Score: ",score
+        elif closestGhost == 0:
+            score -= bestScore
+        elif closestGhost == 1:
+            score -=(bestScore/2)
+        elif closestGhost == 2:
+            score -=(bestScore/4)
+        elif closestGhost > 2:
+            score += (30-closestPrey)*1000
+            #print "Close Prey",closestPrey
+            
+    else:
+        if justAteGhost == True and closestGhost > 1:
+            score += bestScore*8
+        if closestGhost == 0:
+            score -=bestScore
+        elif closestGhost == 1:
+            if closestFood == 0 and foodLeft == 0:
+                score +=bestScore
+            else:
+                score -=(bestScore/2)
+                score += ((currentFoodWeight)+(closestFoodWeight/closestFood)+(closestGhostWeight/closestGhost)+(justAteGhostWeight*justAteGhost))
+        elif closestGhost == 2:
+            if closestFood == 0 and foodLeft == 0:
+                score +=bestScore
+            else:
+                score -=(bestScore/4)
+                score += ((currentFoodWeight)+(closestFoodWeight/closestFood)+(closestGhostWeight/closestGhost)+(justAteGhostWeight*justAteGhost))
+        elif closestGhost > 2:
+            if closestFood == 0 and foodLeft == 0:
+                score +=bestScore
+            else:
+                score += ((currentFoodWeight)+(closestFoodWeight/closestFood)+(closestGhostWeight/closestGhost)+(justAteGhostWeight*justAteGhost))
+    
+    #print "prey?:",preyExist
+    #print "cap: ",closestCapDistance
+    #print "gho: ",capToGhostDistance
+    #print "Food Left: ",foodLeftWeight
+    #print "Closest Food: ",closestFood
+    #print "Closest Ghost: ",closestGhost
+    #print score
+    return score
   
-  util.raiseNotDefined()
+  
+  
+  
+  
+  
+  
+  
+  
+  
+    util.raiseNotDefined()
 
 # Abbreviation
 better = betterEvaluationFunction
