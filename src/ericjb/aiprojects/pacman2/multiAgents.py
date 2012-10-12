@@ -314,12 +314,12 @@ class MinimaxAgent(MultiAgentSearchAgent):
     "*** YOUR CODE HERE ***"
     def maxValue(state, depth):
         actions = state.getLegalActions(0)
-        #if Directions.STOP in actions: actions.remove(Directions.STOP)
+        if Directions.STOP in actions: actions.remove(Directions.STOP)
         if terminalTest(state, depth):
-            debugOut = ""
-            for i in range(2, depth): debugOut +="        "
-            debugOut +="Max:  "+str(utility(state))+"\n"
-            debug.write(debugOut)
+            #debugOut = ""
+            #for i in range(2, depth): debugOut +="        "
+            #debugOut +="Max:  "+str(utility(state))+"\n"
+            #debug.write(debugOut)
             return utility(state),state,Directions.STOP
         returnV = -float("inf")
         returnState = None
@@ -341,20 +341,20 @@ class MinimaxAgent(MultiAgentSearchAgent):
                 returnState = successor
                 returnV = agentV
                 returnAction = a
-        debugOut = ""
-        for i in range(2, depth): debugOut +="        "
-        debugOut +="Max:  "+str(utility(state))+"\n"
-        debug.write(debugOut)
+        #debugOut = ""
+        #for i in range(2, depth): debugOut +="        "
+        #debugOut +="Max:  "+str(utility(state))+"\n"
+        #debug.write(debugOut)
         return returnV,returnState,returnAction
         
     def minValue(state, depth, agent):
         actions = state.getLegalActions(agent)
         if Directions.STOP in actions: actions.remove(Directions.STOP)
         if terminalTest(state, depth):
-            debugOut = "    "
-            for i in range(2, depth): debugOut +="        "
-            debugOut +="Min:  "+str(utility(state))+"\n"
-            debug.write(debugOut)
+            #debugOut = "    "
+            #for i in range(2, depth): debugOut +="        "
+            #debugOut +="Min:  "+str(utility(state))+"\n"
+            #debug.write(debugOut)
             return utility(state),state,Directions.STOP
         returnV = float("inf")
         returnState = None
@@ -366,10 +366,10 @@ class MinimaxAgent(MultiAgentSearchAgent):
                 returnState = successor
                 returnV = newValue
                 returnAction = a
-        debugOut = "    "
-        for i in range(2, depth): debugOut +="        "
-        debugOut +="Min:  "+str(utility(state))+"\n"
-        debug.write(debugOut)
+        #debugOut = "    "
+        #for i in range(2, depth): debugOut +="        "
+        #debugOut +="Min:  "+str(utility(state))+"\n"
+        #debug.write(debugOut)
         return returnV,returnState,returnAction
     
     def utility(state):
@@ -380,12 +380,12 @@ class MinimaxAgent(MultiAgentSearchAgent):
             return True
         return False
     
-    debug = open('debug.txt', 'w')
-    debug.write("Start: \n")
-    debug.truncate()
+    #debug = open('debug.txt', 'w')
+    #debug.write("Start: \n")
+    #debug.truncate()
     v,s,a = maxValue(gameState, 0)
-    print "Minimax Value: ",v
-    debug.close()
+    #print "Minimax Value: ",v
+    #debug.close()
     return a 
 
     util.raiseNotDefined()
@@ -495,7 +495,7 @@ class ExpectimaxAgent(MultiAgentSearchAgent):
             agentV = float("inf")
             newAgentState = successor
             for i in range(1, len(state.data.agentStates)):
-                newValue,newState,unused = expectedValue(newAgentState, depth, i)
+                newValue,newState = expectedValue(newAgentState, depth, i)
                 if newValue <= agentV:
                     agentV = newValue
                     newAgentState = newState
@@ -510,23 +510,15 @@ class ExpectimaxAgent(MultiAgentSearchAgent):
         actions = state.getLegalActions(agent)
         if Directions.STOP in actions: actions.remove(Directions.STOP)
         if terminalTest(state, depth):
-            return utility(state),state,Directions.STOP
-        returnState = None
-        returnAction = None
-        randMove = random.randint(1, len(actions))
-        count = 0
+            return utility(state),state
         totalValue = 0
         for a in actions:
-            count +=1
             successor = (state.generateSuccessor(agent, a))
             newValue,newState,unused = maxValue(successor, (depth+1))
             totalValue +=newValue
-            if count == randMove:
-                returnState = successor
-                returnAction = a
         averageValue = (totalValue/len(actions))
         returnV = averageValue
-        return returnV,state,returnAction
+        return returnV,state
     
     def utility(state):
         return self.evaluationFunction(state)
@@ -535,13 +527,9 @@ class ExpectimaxAgent(MultiAgentSearchAgent):
         if depth == self.depth or state.isLose() or state.isWin():
             return True
         return False
-    
-    debug = open('debug.txt', 'w')
-    debug.write("Start: \n")
-    debug.truncate()
+
     v,s,a = maxValue(gameState, 0)
     #print "Minimax Value: ",v
-    debug.close()
     return a 
 
     util.raiseNotDefined()

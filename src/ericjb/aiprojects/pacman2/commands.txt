@@ -22,4 +22,31 @@ python pacman.py -l contestClassic -p ContestAgent -g DirectionalGhost -q -n 10
 -p MinimaxAgent -l minimaxClassic -a depth=4
 -p MinimaxAgent -a depth=1 -l smallClassic
 -p MinimaxAgent -a depth=3 -l smallClassic
--p MinimaxAgent -a depth=3 -l smallClassic --frameTime .03 -g DirectionalGhost 
+-p MinimaxAgent -a depth=3 -l smallClassic  --frameTime .01 -g DirectionalGhost -n 10
+
+-p AlphaBetaAgent -a depth=3 -l smallClassic
+-p AlphaBetaAgent -a depth=4 -l minimaxClassic
+-p AlphaBetaAgent -a depth=5 -l smallClassic --frameTime .01
+-p MinimaxAgent -a depth=5 -l smallClassic --frameTime .01
+
+
+
+python pacman.py -p MinimaxAgent -a depth=3 -l smallClassic -n 10 --frameTime 0.03
+
+python pacman.py -p AlphaBetaAgent -a depth=3 -l smallClassic
+python pacman.py -p AlphaBetaAgent -a depth=3 -l minimaxClassic -n 10 -q
+python pacman.py -p MinimaxAgent -a depth=3 -l minimaxClassic -n 10 -q
+
+
+
+
+-p AlphaBetaAgent -l trappedClassic -a depth=3 -q -n 10
+-p ExpectimaxAgent -l trappedClassic -a depth=3 -q -n 10
+
+-l smallClassic -p ExpectimaxAgent -a evalFn=better -n 10 --frameTime .01
+
+-l contestClassic -p ContestAgent -g DirectionalGhost -q -n 10
+
+-l contestClassic -p ExpectimaxAgent -a evalFn=better,depth=1 -g DirectionalGhost -q -n 10
+
+-l contestClassic -p ExpectimaxAgent -a evalFn=better,depth=1 -g DirectionalGhost -n 10 --frameTime .03
