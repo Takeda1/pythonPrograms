@@ -468,7 +468,6 @@ class ExpectimaxAgent(MultiAgentSearchAgent):
   """
     Your expectimax agent (question 4)
   """
-
   def getAction(self, gameState):
     """
       Returns the expectimax action using self.depth and self.evaluationFunction
@@ -477,7 +476,6 @@ class ExpectimaxAgent(MultiAgentSearchAgent):
       legal moves.
     """
     "*** YOUR CODE HERE ***"
-    
     def maxValue(state, depth):
         actions = state.getLegalActions(0)
         #if Directions.STOP in actions: actions.remove(Directions.STOP)
@@ -561,7 +559,7 @@ def betterEvaluationFunction(currentGameState):
     gameScore = round(currentGameState.data.score,-2)
     gameScoreWeight = bestScore
     
-    if newPoints >20 and newPoints < 500:
+    if newPoints > 20 and newPoints < 500:
         justAteGhost = 1
     else:
         justAteGhost = 0
@@ -670,11 +668,52 @@ def betterEvaluationFunction(currentGameState):
 # Abbreviation
 better = betterEvaluationFunction
 
+
+
+
+class Position:
+
+    def __init__(self, position, numBranches, transition):
+        self.position = position
+        self.numBranches = numBranches
+        self.transition = transition
+        self.successorStates = self.getSuccessorStates()
+        
+    def getSuccessorStates(self):
+        successors = []
+        for i in self.transition.values():
+            successors.append(i[0])
+        return successors
+
+class Node:
+
+    def __init__(self, position, numBranches, transition={}):
+        self.position = position
+        self.numBranches = numBranches
+        self.transition = transition
+    
+    def setTransition(self, newTransition):
+        self.transition = newTransition
+        # transition[action] = ((x,y), [Up, Down, Left, ...]) 
+
+class Edge:
+
+    def __init__(self, position, numBranches, vertices):
+        self.position = position
+        self.numBranches = numBranches
+        self.vertices = vertices
+
+
+
+        
+
 class ContestAgent(MultiAgentSearchAgent):
   """
     Your agent for the mini-contest
   """
-
+  def __init__(self):
+      self.gameState = None
+      
   def getAction(self, gameState):
     """
       Returns an action.  You can use any method you want and search to any depth you want.
@@ -684,6 +723,645 @@ class ContestAgent(MultiAgentSearchAgent):
       just make a beeline straight towards Pacman (or away from him if they're scared!)
     """
     "*** YOUR CODE HERE ***"
+    def bestEvaluationFunction(currentGameState):
+        """
+          Your extreme ghost-hunting, pellet-nabbing, food-gobbling, unstoppable
+          evaluation function (question 5).
+        
+          DESCRIPTION: <write something here so we know what you did>
+        """
+        "*** YOUR CODE HERE ***"
+        
+        
+        ghostDict = updateEnemies(currentGameState)
+        currentCaps = updateCaps(currentGameState)
+        currentFood = updateFood(currentGameState)
+        pacPos = updatePacman(currentGameState)
+        foodEaten = len(self.allFood - currentFood)
+        ghostList,preyList,ghostNum,preyNum = updatePreyAndGhosts(ghostDict)
+        bestCap = minPacGhostCap()
+        bestCapDist = getDistance(pacPos, bestCap)
+        closestFoodDist = getDistClosestFood()
+        
+        
+        
+        
+        newPos = currentGameState.getPacmanPosition()
+        oldFood = currentGameState.getFood()
+        newGhostStates = currentGameState.getGhostStates()
+        newScaredTimes = [ghostState.scaredTimer for ghostState in newGhostStates]
+        
+        score = 0
+        foodLeft = None
+        closestFood = None
+        closestGhost = None
+        justAteFoodWeight = 1000
+        justAteGhostWeight = 5000
+        closestFoodWeight = 100
+        maxMazeDistance = (currentGameState.data.layout.height + currentGameState.data.layout.width)
+        closestGhostWeight = 100/maxMazeDistance
+        bestScore = 100000
+        newPoints = currentGameState.data.scoreChange
+        gameScore = round(currentGameState.data.score,-2)
+        gameScoreWeight = bestScore
+        
+        if newPoints > 20 and newPoints < 500:
+            justAteGhost = 1
+        else:
+            justAteGhost = 0
+        justAteCap = 0
+        for i in newScaredTimes:
+            if i > 38:
+                justAteCap = 1
+                
+        foodPosSet = getFoodPositions(oldFood)
+        foodLeft = len(foodPosSet)
+        closestFood = pathLengthToClosestFood(currentGameState)    
+        totalFood = len(getFoodPositions(currentGameState.data.layout.food))
+        maxFoodWeight = (totalFood-1)*justAteFoodWeight
+        currentFoodWeight = maxFoodWeight-((foodLeft-1)*justAteFoodWeight)
+        ghostDistSet,preyDistSet,closestGhost,closestPrey,closestCap,closestCapDistance,capToGhostDistance = getDistances(newPos, newGhostStates, currentGameState)
+        
+        if len(ghostDistSet) == 0: ghostsExist = False
+        else: ghostsExist = True
+        if len(preyDistSet) == 0: preyExist = False
+        else: preyExist = True
+        
+        score+=(gameScore*gameScoreWeight)
+        if preyExist == False and closestCapDistance <= 5 and capToGhostDistance >= closestCapDistance:
+            if closestGhost == 0:
+                score -=bestScore
+            else:
+                score += currentFoodWeight+5000
+                score += bestScore/closestCapDistance
+            #print "CLOSE TO POWER PELLET!"
+            #print "Position: ",newPos
+            #print "Distance: ",closestCapDistance
+            #print "GhostCap: ",capToGhostDistance
+            #print "CloseGhst: ",closestGhost
+            #print "Score: ",score
+            score+=gameScore
+                    
+        elif ghostsExist == False:
+            if justAteCap == 1 and closestPrey < 4:
+                score += bestScore*3
+            score += (10-closestPrey)*2000
+            score += currentFoodWeight
+            #print "POWER PELLET!"
+            #print "Position: ",newPos
+            #print "Score: ",score
+            #print "ClosePrey: ",closestPrey
+            
+        elif preyExist and ghostsExist:
+            if justAteGhost == True and closestGhost > 1:
+                score += bestScore*8
+                #print "ATE GHOST!"
+                #print "Position: ",newPos
+                #print "Score: ",score
+            elif closestGhost == 0:
+                score -= bestScore
+            elif closestGhost == 1:
+                score -=(bestScore/2)
+            elif closestGhost == 2:
+                score -=(bestScore/4)
+            elif closestGhost > 2:
+                score += (30-closestPrey)*1000
+                #print "Close Prey",closestPrey
+                
+        else:
+            if justAteGhost == True and closestGhost > 1:
+                score += bestScore*8
+            if closestGhost == 0:
+                score -=bestScore
+            elif closestGhost == 1:
+                if closestFood == 0 and foodLeft == 0:
+                    score +=bestScore
+                else:
+                    score -=(bestScore/2)
+                    score += ((currentFoodWeight)+(closestFoodWeight/closestFood)+(closestGhostWeight/closestGhost)+(justAteGhostWeight*justAteGhost))
+            elif closestGhost == 2:
+                if closestFood == 0 and foodLeft == 0:
+                    score +=bestScore
+                else:
+                    score -=(bestScore/4)
+                    score += ((currentFoodWeight)+(closestFoodWeight/closestFood)+(closestGhostWeight/closestGhost)+(justAteGhostWeight*justAteGhost))
+            elif closestGhost > 2:
+                if closestFood == 0 and foodLeft == 0:
+                    score +=bestScore
+                else:
+                    score += ((currentFoodWeight)+(closestFoodWeight/closestFood)+(closestGhostWeight/closestGhost)+(justAteGhostWeight*justAteGhost))
+        
+        #print "prey?:",preyExist
+        #print "cap: ",closestCapDistance
+        #print "gho: ",capToGhostDistance
+        #print "Food Left: ",foodLeftWeight
+        #print "Closest Food: ",closestFood
+        #print "Closest Ghost: ",closestGhost
+        #print score
+        return score
+        util.raiseNotDefined()
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    def isCorner(position):
+        if position.numBranches == 2:
+            directions = position.transition.keys()
+            if directions[0] == 'North' and directions[1] == 'South':
+                return False
+            elif directions[0] == 'East' and directions[1] == 'West':
+                return False
+            elif directions[0] == 'South' and directions[1] == 'North':
+                return False
+            elif directions[0] == 'West' and directions[1] == 'East':
+                return False
+            return True
+        return False
+    
+    def oppositeDirection(direction):
+        if direction == 'North':
+            return 'South'
+        elif direction == 'East':
+            return 'West'
+        elif direction == 'South':
+            return 'North'
+        else:
+            return 'East'
+    
+    def reversePath(path):
+        newPath = []
+        tempPath = []
+        for i in path:
+            tempPath.append(i)
+        while len(tempPath) > 0:
+            newDirection = oppositeDirection(tempPath.pop())
+            newPath.append(newDirection)
+        return newPath
+        
+    def sameList(list1):
+        list2 = list1[:]
+        return list2
+    def sameDict(dict1):
+        dict2 = {}
+        for i in dict1.keys():
+            dict2[i] = dict1[i]
+        return dict2
+            
+    def same(thing1):
+        thing2 = thing1
+        return thing2
+    
+    
+    
+    def initPaths():
+      
+        wallGrid = gameState.data.layout.walls
+        notWalls = set([])
+        countX = -1
+        countY = -1
+        for i in wallGrid:
+            countX+=1
+            countY = -1
+            for j in i:
+                countY+=1
+                if j == False:
+                    notWalls.add((countX, countY))
+        positionDictionary = {}
+        newGameState = gameState
+        pacmanInitialPosition = gameState.data.agentStates[0].start.pos
+        legal = newGameState.getLegalPacmanActions()
+        if Directions.STOP in legal: legal.remove(Directions.STOP)
+        successors = []
+        transition = {}
+        for action in legal:
+            successor = (newGameState.generateSuccessor(0, action), action)
+            successors.append(successor)
+            transition[action] = successor[0].data.agentStates[0].configuration.pos
+        newPosition = Position(pacmanInitialPosition, len(successors), transition)
+        positionDictionary[pacmanInitialPosition] = newPosition
+        edgePieceDictionary = {}
+        vertexDictionary = {}
+        edgeDictionary = {}
+        self.twoPathDictionary = {}
+        
+        for i in notWalls:
+            newGameState.data.agentStates[0].start.pos = i
+            legal = newGameState.getLegalPacmanActions()
+            if Directions.STOP in legal: legal.remove(Directions.STOP)
+            successors = []
+            transition = {}
+            for action in legal:
+                successor = (newGameState.generateSuccessor(0, action), action)
+                successors.append(successor)
+                transition[action] = successor[0].data.agentStates[0].configuration.pos
+            newPosition = Position(i, len(successors), transition)
+            positionDictionary[i] = newPosition
+            if newPosition.numBranches == 1 or (newPosition.numBranches == 2 and isCorner(newPosition)) or newPosition.numBranches > 2:
+                vertexDictionary[i] = newPosition
+            else:
+                edgePieceDictionary[i] = newPosition
+            if newPosition.numBranches == 2:
+                self.twoPathDictionary[i] = newPosition
+        
+        nodeDict = {}
+        for i in vertexDictionary.values():
+            newNode = Node(i.position, i.numBranches)
+            nodeDict[i.position] = newNode
+        
+        for startNode in positionDictionary.values():
+            for transitionKey in startNode.transition.keys():
+                direction = transitionKey
+                opposite = oppositeDirection(direction)
+                startPos = startNode.position
+                newPath = []
+                reversedPath = []
+                newPos = startNode.transition[direction]
+                firstVertex = True
+                while newPos in notWalls:
+                    newPath.append(direction)
+                    if (startPos, newPos) not in self.paths.keys():
+                        reversedPath = reversePath(newPath)
+                        self.paths[(startPos, newPos)] = sameList(newPath)
+                        self.paths[(newPos, startPos)] = sameList(reversedPath)
+                        if startPos in nodeDict.keys() and newPos in nodeDict.keys() and firstVertex == True:
+                            firstVertex = False
+                            dict1 = sameDict(nodeDict[startPos].transition)
+                            dict2 = sameDict(nodeDict[newPos].transition)
+                            dict1[direction] = (same(newPos), sameList(newPath))
+                            dict2[opposite] = (same(startPos), sameList(reversedPath))
+                            if direction not in nodeDict[startPos].transition.keys():
+                                nodeDict[startPos].setTransition(sameDict(dict1))
+                            if opposite not in nodeDict[newPos].transition.keys():
+                                nodeDict[newPos].setTransition(sameDict(dict2))
+                    newNode = positionDictionary[newPos]
+                    if direction in newNode.transition.keys():
+                        newPos = newNode.transition[direction]
+                    else:
+                        newPos = (0,0)
+                        
+        def setPath(a, b, pastFrontier, depth):
+            newDepth = depth+1
+            visited.append(a.position)
+            if (a.position, b.position) in self.paths.keys():
+                return sameList(self.paths[(a.position, b.position)])
+            
+            newFrontier = []
+            for i in a.transition.keys():
+                newFrontierPosition = nodeDict[a.transition[i][0]].position
+                if newFrontierPosition not in visited and newFrontierPosition not in pastFrontier:
+                    newFrontier.append(newFrontierPosition)
+            fullFrontier = []
+            for i in pastFrontier:
+                fullFrontier.append(i)
+            for i in newFrontier:
+                fullFrontier.append(i)   
+            minPath = None
+            minPathLength = float("inf")    
+            for i in a.transition.keys():
+                successor = nodeDict[a.transition[i][0]]
+                newPath = sameList(self.paths[(a.position, successor.position)])
+                newPathLength = float("inf")
+                if (successor.position, b.position) in self.paths.keys():
+                    for j in self.paths[(successor.position, b.position)]:
+                        newPath.append(j)
+                    newPathLength = len(newPath)
+                elif successor.position not in visited:
+                    tempPath,tempPathLength = setPath(successor, b, fullFrontier, newDepth)
+                    tempPath2 = sameList(tempPath)
+                    for j in tempPath2:
+                        newPath.append(j)
+                    if tempPathLength == float("inf"):
+                        newPathLength = float("inf")
+                    else:
+                        newPathLength = len(newPath)
+                else:
+                    newPathLength = float("inf")
+                if newPathLength < minPathLength:
+                    minPathLength = same(newPathLength)
+                    minPath = sameList(newPath)
+            if minPath == None:
+                minPathLength = float("inf")
+                minPath = []    
+            else:
+                reversedPath = reversePath(sameList(minPath))
+                self.paths[(a.position, b.position)] = sameList(minPath)
+                self.paths[(b.position, a.position)] = sameList(reversedPath)
+            return sameList(minPath),same(minPathLength)
+        
+        nodeList = []
+        for a in nodeDict.values():
+            nodeList.append(a)
+        for a in nodeList:
+            for b in nodeList[nodeList.index(a)+1:]:
+                visited = []
+                setPath(a,b, [], 1)
+        
+        edgeList = []
+        edgeDict = {}
+        for i in edgePieceDictionary.values():
+            edgeList.append(i)   
+        for a in nodeList:
+            self.paths[(a.position, a.position)] = []
+        for a in edgeList:
+            self.paths[(a.position, a.position)] = []
+        def setVertices(edge):
+            vertexList = []
+            for direction in edge.transition.keys():
+                newPath = []
+                newPath.append(direction)
+                position = edge.transition[direction]
+                #if position in edgeDict.keys():
+                #    newEdge = Edge(edge.position, edge.numBranches, edgeDict[position].vertices)
+                #    edgeDict[edge.position] = newEdge
+                #    return
+                while position not in vertexDictionary.keys():
+                    successor = positionDictionary[position]
+                    position = successor.transition[direction]
+                    newPath.append(direction)
+                vertexList.append((position, sameList(newPath)))
+            newEdge = Edge(edge.position, edge.numBranches, vertexList)
+            edgeDict[edge.position] = newEdge
+                
+                    
+                
+                
+        
+        for i in edgeList:
+            setVertices(i)
+            
+        for i in edgeDict.values():
+            for j in nodeDict.values():
+                if (i.position, j.position) not in self.paths.keys():
+                    vertex1,firstPath1 = i.vertices[0]
+                    vertex2,firstPath2 = i.vertices[1]
+                    secondPath1 = self.paths[vertex1, j.position]
+                    secondPath2 = self.paths[vertex2, j.position]
+                    fullPath1 = []
+                    fullPath2 = []
+                    for k in firstPath1:
+                        fullPath1.append(k)
+                    for k in secondPath1:
+                        fullPath1.append(k)
+                    for k in firstPath2:
+                        fullPath2.append(k)
+                    for k in secondPath2:
+                        fullPath2.append(k)
+                    if len(fullPath1) < len(fullPath2):
+                        finalPath = fullPath1
+                    else:
+                        finalPath = sameList(fullPath2)
+                    reversedPath = sameList(reversePath(finalPath))
+                    self.paths[i.position, j.position] = finalPath
+                    self.paths[j.position, i.position] = reversedPath
+    
+        for i in edgeDict.values():
+            for j in edgeDict.values():
+                if (i.position, j.position) not in self.paths.keys():
+                    vertex1,firstPath1 = i.vertices[0]
+                    vertex2,firstPath2 = i.vertices[1]
+                    secondPath1 = self.paths[vertex1, j.position]
+                    secondPath2 = self.paths[vertex2, j.position]
+                    fullPath1 = []
+                    fullPath2 = []
+                    for k in firstPath1:
+                        fullPath1.append(k)
+                    for k in secondPath1:
+                        fullPath1.append(k)
+                    for k in firstPath2:
+                        fullPath2.append(k)
+                    for k in secondPath2:
+                        fullPath2.append(k)
+                    if len(fullPath1) < len(fullPath2):
+                        finalPath = fullPath1
+                    else:
+                        finalPath = sameList(fullPath2)
+                    reversedPath = sameList(reversePath(finalPath))
+                    self.paths[i.position, j.position] = finalPath
+                    self.paths[j.position, i.position] = reversedPath
+    def initEnemies(gameState):
+        notEnemy = True
+        count = -1
+        for i in gameState.data.agentStates:
+            count +=1
+            if notEnemy == True:
+                notEnemy = False
+            else:
+                self.ghostDict[count] = [i.start.pos, i.configuration.pos, i.configuration.direction, i.scaredTimer]
+    def updateEnemies(gameState):
+        newGhostDict = {}
+        notEnemy = True
+        count = -1
+        for i in gameState.data.agentStates:
+            count +=1
+            if notEnemy == True:
+                notEnemy = False
+            else:
+                newGhostDict[count] = [i.start.pos, i.configuration.pos, i.configuration.direction, i.scaredTimer]
+        return newGhostDict
+    def initCaps(gameState):
+        self.allCaps = set(gameState.data.capsules)
+    def updateCaps(gameState):
+        newCaps = set(gameState.data.capsules)
+        return newCaps
+    def initFood(gameState):
+        foodGrid = gameState.getFood()
+        self.allFood = set([])
+        countX = -1
+        countY = -1
+        for i in foodGrid:
+            countX+=1
+            countY = -1
+            for j in i:
+                countY+=1
+                if j == True:
+                    self.allFood.add((countX, countY))
+    def updateFood(gameState):
+        foodGrid = gameState.getFood()
+        newFood = set([])
+        countX = -1
+        countY = -1
+        for i in foodGrid:
+            countX+=1
+            countY = -1
+            for j in i:
+                countY+=1
+                if j == True:
+                    newFood.add((countX, countY))
+        return newFood
+    def updatePacman(gameState):
+        return gameState.data.agentStates[0].configuration.direction
+    def updatePreyAndGhosts(enemies):
+        preyNum = 0
+        preyList = []
+        ghostList = []
+        for i in enemies.values():
+            if i[3] >= 2:
+                preyNum += 1
+                preyList.append(i[1])
+            else:
+                ghostList.append(i[1])
+        ghostNum = 3 - preyNum
+        return ghostList,preyList,ghostNum,preyNum
+    
+    def getDistance(a, b):
+        return len(self.paths[(a, b)])
+    def minDistance(a, points):
+        minDist = float("inf")
+        for i in points:
+            newDist = getDistance(a, i)
+            if newDist < minDist:
+                minDist = newDist
+        return minDist
+    def minPacGhostCap():
+        ghostPositions = []
+        ghostPacDif = -float("inf")
+        bestCap = None
+        for i in self.ghostDict.values():
+            ghostPositions.append(i[1]) 
+        for i in self.currentCaps:
+            minGhostDist = minDistance(i, ghostPositions)
+            pacDist = getDistance(self.pacPos, i)
+            newDifference = minGhostDist - pacDist
+            if newDifference > ghostPacDif:
+                bestCap = i
+                ghostPacDif = newDifference
+        return bestCap
+    def getDistClosestFood():
+        minDist = float("inf")
+        for i in self.currentFood:
+            newDist = getDistance(self.pacPos, i)
+            if newDist == 1: return 1
+            if newDist < minDist:
+                minDist = newDist
+        return minDist
+        
+            
+        
+        
+            
+
+    if self.gameState == None:
+        self.depth = 3
+        self.gameState = gameState
+        self.paths = {}
+        self.ghostDict = {}
+        self.allCaps = set([])
+        self.currentCaps = set([])
+        self.allFood = set([])
+        self.currentFood = set([])
+        self.pacPos = gameState.data.agentStates[0].configuration.direction
+        self.numPrey = 0
+        self.numGhosts = 3
+        initPaths()
+        initEnemies(self.gameState)
+        initCaps(self.gameState)
+        initFood(self.gameState)
+        
+    self.ghostDict = updateEnemies(gameState)
+    self.currentCaps = updateCaps(gameState)
+    self.currentFood = updateFood(gameState)
+    self.pacPos = updatePacman(gameState)
+    foodEaten = len(self.allFood - self.currentFood)
+    ghostList,preyList,ghostNum,preyNum = updatePreyAndGhosts(self.ghostDict)
+    bestCap = minPacGhostCap()
+    bestCapDist = getDistance(self.pacPos, bestCap)
+    closestFoodDist = getDistClosestFood()
+    
+    
+    def maxValue(state, depth, alpha, beta):
+        actions = state.getLegalActions(0)
+        #if Directions.STOP in actions: actions.remove(Directions.STOP)
+        if terminalTest(state, depth):
+            return utility(state),state,Directions.STOP,alpha,beta
+        returnV = -float("inf")
+        returnState = None
+        returnAction = None
+        parentState = state
+        
+        #For each action run through all ghost reactions,
+        #updating the best gamestate and value? each time
+        for a in actions:
+            successor = (parentState.generateSuccessor(0, a))
+            agentV = float("inf")
+            newAgentState = successor
+            for i in range(1, len(state.data.agentStates)):
+                newValue,newState,unused,newAlpha,newBeta = minValue(newAgentState, depth, i, alpha, beta)
+                if newValue <= agentV:
+                    agentV = newValue
+                    newAgentState = newState
+            if agentV >= beta: return agentV,state,Directions.STOP,alpha,beta
+            if agentV > alpha: alpha = agentV
+            if agentV >= returnV:
+                returnState = successor
+                returnV = agentV
+                returnAction = a
+        return returnV,returnState,returnAction,alpha,beta
+        
+    def minValue(state, depth, agent, alpha, beta):
+        actions = state.getLegalActions(agent)
+        if Directions.STOP in actions: actions.remove(Directions.STOP)
+        if agent.configuration.pos in self.twoPathDictionary.keys():
+            opposite = oppositeDirection(agent.configuration.direction)
+            actions.remove(opposite)
+        if terminalTest(state, depth):
+            return utility(state),state,Directions.STOP,alpha,beta
+        returnV = float("inf")
+        returnState = None
+        returnAction = None
+        for a in actions:
+            successor = (state.generateSuccessor(agent, a))
+            newValue,newState,unused,newAlpha,newBeta = maxValue(successor, (depth+1), alpha, beta)
+            if newValue <= alpha: return newValue,state,Directions.STOP,alpha,beta
+            if newValue < beta: beta = newValue
+            if newValue <= returnV:
+                returnState = successor
+                returnV = newValue
+                returnAction = a
+        return returnV,returnState,returnAction,alpha,beta
+    
+    def utility(state):
+        return bestEvaluationFunction(state)
+    
+    def terminalTest(state, depth):
+        if depth == self.depth or state.isLose() or state.isWin():
+            return True
+        return False
+    
+    v,s,a,alpha,beta = maxValue(gameState, 0, -float("inf"), float("inf"))
+    return a
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+        
+    
+                    
+                    
+                
+                 
+        
+    
+    
+        
+    
+            
+            
+            
     util.raiseNotDefined()
 
 
