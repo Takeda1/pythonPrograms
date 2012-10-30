@@ -15,6 +15,7 @@ import search
 from game import Agent
 import searchAgents #@UnresolvedImport
 import math
+from copy import deepcopy
 
 def findFastPath(point1, point2, gameState):
     x1, y1 = point1
@@ -486,7 +487,7 @@ class ExpectimaxAgent(MultiAgentSearchAgent):
         returnAction = None
         parentState = state
         
-        #For each action choose smallest ghost expected value
+        #For each action get ghost expected value
         #then choose best action
         for a in actions:
             successor = (parentState.generateSuccessor(0, a))
@@ -713,6 +714,7 @@ class ContestAgent(MultiAgentSearchAgent):
   """
   def __init__(self):
       self.gameState = None
+      self.init = False
       
   def getAction(self, gameState):
     """
@@ -723,6 +725,102 @@ class ContestAgent(MultiAgentSearchAgent):
       just make a beeline straight towards Pacman (or away from him if they're scared!)
     """
     "*** YOUR CODE HERE ***"
+    
+    #Useful Methods
+    def isCorner(position):
+        if position.numBranches == 2:
+            directions = position.transition.keys()
+            if directions[0] == 'North' and directions[1] == 'South':
+                return False
+            elif directions[0] == 'East' and directions[1] == 'West':
+                return False
+            elif directions[0] == 'South' and directions[1] == 'North':
+                return False
+            elif directions[0] == 'West' and directions[1] == 'East':
+                return False
+            return True
+        return False
+    
+    def oppositeDirection(direction):
+        if direction == 'North':
+            return 'South'
+        elif direction == 'East':
+            return 'West'
+        elif direction == 'South':
+            return 'North'
+        else:
+            return 'East'
+    
+    def reversePath(path):
+        newPath = []
+        tempPath = []
+        for i in path:
+            tempPath.append(i)
+        while len(tempPath) > 0:
+            newDirection = oppositeDirection(tempPath.pop())
+            newPath.append(newDirection)
+        return newPath
+        
+    def sameList(list1):
+        list2 = list1[:]
+        return list2
+    def sameDict(dict1):
+        dict2 = {}
+        for i in dict1.keys():
+            dict2[i] = dict1[i]
+        return dict2
+            
+    def same(thing1):
+        thing2 = thing1
+        return thing2
+    
+    
+    def getDistance(a, b, pathDict):
+        return len(pathDict[(a, b)])
+    def minPath(a, points, pathDict):
+        minDist = float("inf")
+        minPath = []
+        for i in points:
+            newPath = pathDict[(a, i)]
+            newDist = len(newPath)
+            if newDist < minDist:
+                minPath = newPath
+                minDist = newDist
+        return minPath, minDist
+    def minPacGhostCap(pathDict):
+        ghostPositions = []
+        ghostPacDif = -float("inf")
+        bestCap = None
+        for i in self.ghostDict.values():
+            ghostPositions.append(i[1]) 
+        for i in self.currentCaps:
+            minGhost,minGhostDist = minPath(i, ghostPositions, pathDict)
+            pacDist = getDistance(self.pacPos, i, pathDict)
+            newDifference = minGhostDist - pacDist
+            if newDifference > ghostPacDif:
+                bestCap = i
+                ghostPacDif = newDifference
+        return bestCap,ghostPacDif
+    def getClosestFood(position, pathDict):
+        minDist = float("inf")
+        minPath = []
+        for i in self.currentFood:
+            newPath = pathDict[(position, i)]
+            newDist = len(newPath)
+            if newDist == 1: return newPath,1
+            if newDist < minDist:
+                minPath = newPath
+                minDist = newDist
+        return minPath,minDist
+    
+
+    
+    #End Useful Methods
+    
+    
+    
+    
+    #Evaluation Function
     def bestEvaluationFunction(currentGameState):
         """
           Your extreme ghost-hunting, pellet-nabbing, food-gobbling, unstoppable
@@ -739,10 +837,14 @@ class ContestAgent(MultiAgentSearchAgent):
         pacPos = updatePacman(currentGameState)
         foodEaten = len(self.allFood - currentFood)
         ghostList,preyList,ghostNum,preyNum = updatePreyAndGhosts(ghostDict)
-        bestCap = minPacGhostCap()
-        bestCapDist = getDistance(pacPos, bestCap)
-        closestFoodDist = getDistClosestFood()
+        bestCap,ghostCapDif = minPacGhostCap(self.paths)
+        bestCapDist = getDistance(pacPos, bestCap, self.paths)
+        closestFoodPath,closestFoodDist = getClosestFood() 
         
+        ateGhost = 0
+        for i in currentGameState.data._eaten[1:]:
+            if i == True:
+                ateGhost +=1
         
         
         
@@ -860,66 +962,219 @@ class ContestAgent(MultiAgentSearchAgent):
         #print score
         return score
         util.raiseNotDefined()
+
+    #End Evaluation Function
+
+
+    #MinMax Expected Value
+    
+    def maxValue(state, depth):
+        actions = state.getLegalActions(0)
+        #if Directions.STOP in actions: actions.remove(Directions.STOP)
+        if terminalTest(state, depth):
+            return utility(state),state,Directions.STOP
+        returnV = -float("inf")
+        returnState = None
+        returnAction = None
+        parentState = state
+        
+        #For each action get ghost expected value
+        #then choose best action
+        for a in actions:
+            successor = (parentState.generateSuccessor(0, a))
+            agentV = float("inf")
+            newAgentState = successor
+            for i in range(1, len(state.data.agentStates)):
+                newValue,newState = expectedValue(newAgentState, depth, i)
+                if newValue <= agentV:
+                    agentV = newValue
+                    newAgentState = newState
+            if agentV >= returnV:
+                returnState = successor
+                returnV = agentV
+                returnAction = a
+        return returnV,returnState,returnAction
     
     
+    def expectedValue(state, depth, agent):
+        actions = state.getLegalActions(agent)
+        if Directions.STOP in actions: actions.remove(Directions.STOP)
+        if terminalTest (state, depth):
+            return utility(state),state
+        
+        #Determine Distribution
+        prob_attack = 0.8
+        prob_scaredFlee = 0.8
+        
+        ghostState = state.getGhostState( agent )
+        legalActions = state.getLegalActions( agent )
+        pos = state.getGhostPosition( agent )
+        isScared = ghostState.scaredTimer > 0
+        speed = 1
+        if isScared: speed = 0.5
+        actionVectors = [Actions.directionToVector( a, speed ) for a in legalActions]
+        newPositions = [( pos[0]+a[0], pos[1]+a[1] ) for a in actionVectors]
+        pacmanPosition = state.getPacmanPosition()
+        
+        distancesToPacman = [manhattanDistance( pos, pacmanPosition ) for pos in newPositions]
+        if isScared:
+            bestScore = max( distancesToPacman )
+            bestProb = prob_scaredFlee
+        else:
+            bestScore = min( distancesToPacman )
+            bestProb = prob_attack
+        bestActions = [action for action, distance in zip( legalActions, distancesToPacman ) if distance == bestScore]
+        
+        dist = util.Counter()
+        for a in bestActions: dist[a] = bestProb / len(bestActions)
+        for a in legalActions: dist[a] += ( 1-bestProb ) / len(legalActions)
+        dist.normalize()
+        
+        #End Determine Distribution
+        
+        averageValue = 0
+        for a in actions:
+            weight = dist[a]
+            successor = (state.generateSuccessor(agent, a))
+            newValue,newState,unused = maxValue(successor, (depth+1))
+            averageValue +=weight*newValue
+        returnV = averageValue
+        return returnV,state
     
+    def utility(state):
+        return bestEvaluationFunction(state)
     
-    
-    
-    
-    
-    
-    
-    def isCorner(position):
-        if position.numBranches == 2:
-            directions = position.transition.keys()
-            if directions[0] == 'North' and directions[1] == 'South':
-                return False
-            elif directions[0] == 'East' and directions[1] == 'West':
-                return False
-            elif directions[0] == 'South' and directions[1] == 'North':
-                return False
-            elif directions[0] == 'West' and directions[1] == 'East':
-                return False
+    def terminalTest(state, depth):
+        if depth == self.depth or state.isLose() or state.isWin():
             return True
         return False
+
+    #End MinMax Expected Value
     
-    def oppositeDirection(direction):
-        if direction == 'North':
-            return 'South'
-        elif direction == 'East':
-            return 'West'
-        elif direction == 'South':
-            return 'North'
-        else:
-            return 'East'
     
-    def reversePath(path):
-        newPath = []
-        tempPath = []
-        for i in path:
-            tempPath.append(i)
-        while len(tempPath) > 0:
-            newDirection = oppositeDirection(tempPath.pop())
-            newPath.append(newDirection)
-        return newPath
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    #lookDownPath and generate probability of Winning, Dying, and anything Else happening
+    
+    def lookDownPath(state, path, depth, numGhosts, maxDepth, probability):
+        if state.isWin():
+            return 0,1,0
+        if state.isLose():
+            return 1,0,0
+        for i in state.data._eaten[1:]:
+            if i == True:
+                print "Win: ",probability
+                return 0,1,0
+        if depth == maxDepth:
+            print "Else: ",probability
+            return 0,0,1
+        parentState = state
+        newPath = sameList(path)
+        successor = (parentState.generateSuccessor(0, newPath.pop()))
+        states = [(successor, probability)]
+        for i in range(1, len(state.data.agentStates)):
+            states = expectedValue2(states, i)
+        pD = 0
+        pW = 0
+        pE = 0
+        for i in states:
+            newPD, newPW, newPE = lookDownPath(i[0], path[0:-1], depth+1, numGhosts, maxDepth, i[1])
+            pD += (newPD)
+            pW += (newPW)
+            pE += (newPE)
         
-    def sameList(list1):
-        list2 = list1[:]
-        return list2
-    def sameDict(dict1):
-        dict2 = {}
-        for i in dict1.keys():
-            dict2[i] = dict1[i]
-        return dict2
+        #debug = ""
+        #for i in range(depth): debug+="  "
+        #debug+=str(pD)+" "+str(pW)+" "+str(pE)
+        #print debug
+        return pD, pW, pE
+    
+    
+    def expectedValue2(states, agent):
+        newStates = []
+        for i in states:
+            state, parentProbability = i
             
-    def same(thing1):
-        thing2 = thing1
-        return thing2
+            
+            actions = state.getLegalActions(agent)
+            
+            #Determine Distribution
+            prob_attack = 0.8
+            prob_scaredFlee = 0.8
+            
+            ghostState = state.getGhostState( agent )
+            legalActions = state.getLegalActions( agent )
+            pos = state.getGhostPosition( agent )
+            isScared = ghostState.scaredTimer > 0
+            speed = 1
+            if isScared: speed = 0.5
+            actionVectors = [Actions.directionToVector( a, speed ) for a in legalActions]
+            newPositions = [( pos[0]+a[0], pos[1]+a[1] ) for a in actionVectors]
+            pacmanPosition = state.getPacmanPosition()
+            
+            distancesToPacman = [manhattanDistance( pos, pacmanPosition ) for pos in newPositions]
+            if isScared:
+                bestScore = max( distancesToPacman )
+                bestProb = prob_scaredFlee
+            else:
+                bestScore = min( distancesToPacman )
+                bestProb = prob_attack
+            bestActions = [action for action, distance in zip( legalActions, distancesToPacman ) if distance == bestScore]
+            
+            dist = util.Counter()
+            for a in bestActions: dist[a] = bestProb / len(bestActions)
+            for a in legalActions: dist[a] += ( 1-bestProb ) / len(legalActions)
+            dist.normalize()
+            
+            #End Determine Distribution
+
+            for a in actions:
+                weight = dist[a]
+                successor = (state.generateSuccessor(agent, a))
+                newStates.append((successor, weight*parentProbability))
+        return newStates
+
+    #End lookDownPath
     
     
     
-    def initPaths():
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    #Initialization Methods
+    
+    def initPaths(gameState):
+        pathDict = {}
       
         wallGrid = gameState.data.layout.walls
         notWalls = set([])
@@ -933,7 +1188,8 @@ class ContestAgent(MultiAgentSearchAgent):
                 if j == False:
                     notWalls.add((countX, countY))
         positionDictionary = {}
-        newGameState = gameState
+        newGameState = gameState.deepCopy()
+        newGameState.initialize(gameState.data.layout, 0)
         pacmanInitialPosition = gameState.data.agentStates[0].start.pos
         legal = newGameState.getLegalPacmanActions()
         if Directions.STOP in legal: legal.remove(Directions.STOP)
@@ -985,10 +1241,10 @@ class ContestAgent(MultiAgentSearchAgent):
                 firstVertex = True
                 while newPos in notWalls:
                     newPath.append(direction)
-                    if (startPos, newPos) not in self.paths.keys():
+                    if (startPos, newPos) not in pathDict.keys():
                         reversedPath = reversePath(newPath)
-                        self.paths[(startPos, newPos)] = sameList(newPath)
-                        self.paths[(newPos, startPos)] = sameList(reversedPath)
+                        pathDict[(startPos, newPos)] = sameList(newPath)
+                        pathDict[(newPos, startPos)] = sameList(reversedPath)
                         if startPos in nodeDict.keys() and newPos in nodeDict.keys() and firstVertex == True:
                             firstVertex = False
                             dict1 = sameDict(nodeDict[startPos].transition)
@@ -1008,8 +1264,10 @@ class ContestAgent(MultiAgentSearchAgent):
         def setPath(a, b, pastFrontier, depth):
             newDepth = depth+1
             visited.append(a.position)
-            if (a.position, b.position) in self.paths.keys():
-                return sameList(self.paths[(a.position, b.position)])
+            if a.position == (9,5) and b.position == (8,1):
+                print 'CRAP'
+            if (a.position, b.position) in pathDict.keys():
+                return sameList(pathDict[(a.position, b.position)])
             
             newFrontier = []
             for i in a.transition.keys():
@@ -1025,10 +1283,10 @@ class ContestAgent(MultiAgentSearchAgent):
             minPathLength = float("inf")    
             for i in a.transition.keys():
                 successor = nodeDict[a.transition[i][0]]
-                newPath = sameList(self.paths[(a.position, successor.position)])
+                newPath = sameList(pathDict[(a.position, successor.position)])
                 newPathLength = float("inf")
-                if (successor.position, b.position) in self.paths.keys():
-                    for j in self.paths[(successor.position, b.position)]:
+                if (successor.position, b.position) in pathDict.keys():
+                    for j in pathDict[(successor.position, b.position)]:
                         newPath.append(j)
                     newPathLength = len(newPath)
                 elif successor.position not in visited:
@@ -1050,9 +1308,14 @@ class ContestAgent(MultiAgentSearchAgent):
                 minPath = []    
             else:
                 reversedPath = reversePath(sameList(minPath))
-                self.paths[(a.position, b.position)] = sameList(minPath)
-                self.paths[(b.position, a.position)] = sameList(reversedPath)
+                pathDict[(a.position, b.position)] = sameList(minPath)
+                pathDict[(b.position, a.position)] = sameList(reversedPath)
             return sameList(minPath),same(minPathLength)
+        
+        
+        
+        
+        
         
         nodeList = []
         for a in nodeDict.values():
@@ -1067,9 +1330,9 @@ class ContestAgent(MultiAgentSearchAgent):
         for i in edgePieceDictionary.values():
             edgeList.append(i)   
         for a in nodeList:
-            self.paths[(a.position, a.position)] = []
+            pathDict[(a.position, a.position)] = []
         for a in edgeList:
-            self.paths[(a.position, a.position)] = []
+            pathDict[(a.position, a.position)] = []
         def setVertices(edge):
             vertexList = []
             for direction in edge.transition.keys():
@@ -1097,11 +1360,11 @@ class ContestAgent(MultiAgentSearchAgent):
             
         for i in edgeDict.values():
             for j in nodeDict.values():
-                if (i.position, j.position) not in self.paths.keys():
+                if (i.position, j.position) not in pathDict.keys():
                     vertex1,firstPath1 = i.vertices[0]
                     vertex2,firstPath2 = i.vertices[1]
-                    secondPath1 = self.paths[vertex1, j.position]
-                    secondPath2 = self.paths[vertex2, j.position]
+                    secondPath1 = pathDict[vertex1, j.position]
+                    secondPath2 = pathDict[vertex2, j.position]
                     fullPath1 = []
                     fullPath2 = []
                     for k in firstPath1:
@@ -1117,16 +1380,16 @@ class ContestAgent(MultiAgentSearchAgent):
                     else:
                         finalPath = sameList(fullPath2)
                     reversedPath = sameList(reversePath(finalPath))
-                    self.paths[i.position, j.position] = finalPath
-                    self.paths[j.position, i.position] = reversedPath
+                    pathDict[i.position, j.position] = finalPath
+                    pathDict[j.position, i.position] = reversedPath
     
         for i in edgeDict.values():
             for j in edgeDict.values():
-                if (i.position, j.position) not in self.paths.keys():
+                if (i.position, j.position) not in pathDict.keys():
                     vertex1,firstPath1 = i.vertices[0]
                     vertex2,firstPath2 = i.vertices[1]
-                    secondPath1 = self.paths[vertex1, j.position]
-                    secondPath2 = self.paths[vertex2, j.position]
+                    secondPath1 = pathDict[vertex1, j.position]
+                    secondPath2 = pathDict[vertex2, j.position]
                     fullPath1 = []
                     fullPath2 = []
                     for k in firstPath1:
@@ -1142,8 +1405,10 @@ class ContestAgent(MultiAgentSearchAgent):
                     else:
                         finalPath = sameList(fullPath2)
                     reversedPath = sameList(reversePath(finalPath))
-                    self.paths[i.position, j.position] = finalPath
-                    self.paths[j.position, i.position] = reversedPath
+                    pathDict[i.position, j.position] = finalPath
+                    pathDict[j.position, i.position] = reversedPath
+        return pathDict
+                    
     def initEnemies(gameState):
         notEnemy = True
         count = -1
@@ -1153,22 +1418,8 @@ class ContestAgent(MultiAgentSearchAgent):
                 notEnemy = False
             else:
                 self.ghostDict[count] = [i.start.pos, i.configuration.pos, i.configuration.direction, i.scaredTimer]
-    def updateEnemies(gameState):
-        newGhostDict = {}
-        notEnemy = True
-        count = -1
-        for i in gameState.data.agentStates:
-            count +=1
-            if notEnemy == True:
-                notEnemy = False
-            else:
-                newGhostDict[count] = [i.start.pos, i.configuration.pos, i.configuration.direction, i.scaredTimer]
-        return newGhostDict
     def initCaps(gameState):
         self.allCaps = set(gameState.data.capsules)
-    def updateCaps(gameState):
-        newCaps = set(gameState.data.capsules)
-        return newCaps
     def initFood(gameState):
         foodGrid = gameState.getFood()
         self.allFood = set([])
@@ -1181,6 +1432,37 @@ class ContestAgent(MultiAgentSearchAgent):
                 countY+=1
                 if j == True:
                     self.allFood.add((countX, countY))
+    def initSpawns(gameState):
+        spawns = {}
+        for i in gameState.data.agentStates:
+            if i != 0:
+                spawns[i] = i.start.pos 
+        self.spawnList = sameList(newSpawnList)
+
+
+
+
+
+                    
+    #End Initialization Methods
+    
+    #Update Methods
+    def updateEnemies(gameState):
+        newGhostDict = {}
+        notEnemy = True
+        count = -1
+        for i in gameState.data.agentStates:
+            count +=1
+            if notEnemy == True:
+                notEnemy = False
+            else:
+                newGhostDict[count] = [i.start.pos, i.configuration.pos, i.configuration.direction, i.scaredTimer]
+        return newGhostDict
+    
+    def updateCaps(gameState):
+        newCaps = set(gameState.data.capsules)
+        return newCaps
+    
     def updateFood(gameState):
         foodGrid = gameState.getFood()
         newFood = set([])
@@ -1195,7 +1477,7 @@ class ContestAgent(MultiAgentSearchAgent):
                     newFood.add((countX, countY))
         return newFood
     def updatePacman(gameState):
-        return gameState.data.agentStates[0].configuration.direction
+        return gameState.data.agentStates[0].configuration.pos
     def updatePreyAndGhosts(enemies):
         preyNum = 0
         preyList = []
@@ -1209,159 +1491,61 @@ class ContestAgent(MultiAgentSearchAgent):
         ghostNum = 3 - preyNum
         return ghostList,preyList,ghostNum,preyNum
     
-    def getDistance(a, b):
-        return len(self.paths[(a, b)])
-    def minDistance(a, points):
-        minDist = float("inf")
-        for i in points:
-            newDist = getDistance(a, i)
-            if newDist < minDist:
-                minDist = newDist
-        return minDist
-    def minPacGhostCap():
-        ghostPositions = []
-        ghostPacDif = -float("inf")
-        bestCap = None
-        for i in self.ghostDict.values():
-            ghostPositions.append(i[1]) 
-        for i in self.currentCaps:
-            minGhostDist = minDistance(i, ghostPositions)
-            pacDist = getDistance(self.pacPos, i)
-            newDifference = minGhostDist - pacDist
-            if newDifference > ghostPacDif:
-                bestCap = i
-                ghostPacDif = newDifference
-        return bestCap
-    def getDistClosestFood():
-        minDist = float("inf")
-        for i in self.currentFood:
-            newDist = getDistance(self.pacPos, i)
-            if newDist == 1: return 1
-            if newDist < minDist:
-                minDist = newDist
-        return minDist
-        
-            
-        
-        
-            
-
-    if self.gameState == None:
+    #End Update Methods
+    
+    #Runs at Start of Game
+    if self.init == False and self.gameState == None:
+        self.init = True
         self.depth = 3
-        self.gameState = gameState
-        self.paths = {}
+        self.gameState = deepcopy(gameState)
         self.ghostDict = {}
         self.allCaps = set([])
         self.currentCaps = set([])
         self.allFood = set([])
         self.currentFood = set([])
-        self.pacPos = gameState.data.agentStates[0].configuration.direction
         self.numPrey = 0
         self.numGhosts = 3
-        initPaths()
+        tempGameState = deepcopy(gameState)
+        #self.paths = initPaths(tempGameState)
+        self.paths = initDist2(tempGameState)
+        self.pacPos = gameState.data.agentStates[0].configuration.pos
         initEnemies(self.gameState)
         initCaps(self.gameState)
         initFood(self.gameState)
-        
+        initSpawns(self.gameState)
+        self.GETRIDOFME = -1
+    
+    #Runs before every new move
     self.ghostDict = updateEnemies(gameState)
     self.currentCaps = updateCaps(gameState)
     self.currentFood = updateFood(gameState)
     self.pacPos = updatePacman(gameState)
     foodEaten = len(self.allFood - self.currentFood)
+    foodLeft = len(self.allFood) - foodEaten
     ghostList,preyList,ghostNum,preyNum = updatePreyAndGhosts(self.ghostDict)
-    bestCap = minPacGhostCap()
-    bestCapDist = getDistance(self.pacPos, bestCap)
-    closestFoodDist = getDistClosestFood()
-    
-    
-    def maxValue(state, depth, alpha, beta):
-        actions = state.getLegalActions(0)
-        #if Directions.STOP in actions: actions.remove(Directions.STOP)
-        if terminalTest(state, depth):
-            return utility(state),state,Directions.STOP,alpha,beta
-        returnV = -float("inf")
-        returnState = None
-        returnAction = None
-        parentState = state
+    bestCap,ghostPacDif = minPacGhostCap(self.paths)
+    bestCapDist = getDistance(self.pacPos, bestCap, self.paths)
+    closestFoodPath,closestFoodDist = getClosestFood(self.pacPos, self.paths)
+    closestGhostPath,closestGhostDist = minPath(self.pacPos, ghostList, self.paths)
+    closestPreyPath,closestPreyDist = minPath(self.pacPos, preyList, self.paths)
+    closestSpawnPath,closestSpawnDist = minPath(self.pacPos, self.spawnList, self.paths)
+    legal = gameState.getLegalActions(0)
+    self.GETRIDOFME +=1
+    if self.GETRIDOFME == 0:
+        print legal
+        return 'East'
+    if self.GETRIDOFME == 1:
+        print legal
+        return 'East'
+    if self.GETRIDOFME == 2:
+        self.actions = ['North', 'North', 'West']
+        self.actions.reverse()
+        pD, pW, pE = lookDownPath(gameState, self.actions, 0, self.numGhosts, len(self.actions), 1)
+        print pD, pW, pE
         
-        #For each action run through all ghost reactions,
-        #updating the best gamestate and value? each time
-        for a in actions:
-            successor = (parentState.generateSuccessor(0, a))
-            agentV = float("inf")
-            newAgentState = successor
-            for i in range(1, len(state.data.agentStates)):
-                newValue,newState,unused,newAlpha,newBeta = minValue(newAgentState, depth, i, alpha, beta)
-                if newValue <= agentV:
-                    agentV = newValue
-                    newAgentState = newState
-            if agentV >= beta: return agentV,state,Directions.STOP,alpha,beta
-            if agentV > alpha: alpha = agentV
-            if agentV >= returnV:
-                returnState = successor
-                returnV = agentV
-                returnAction = a
-        return returnV,returnState,returnAction,alpha,beta
-        
-    def minValue(state, depth, agent, alpha, beta):
-        actions = state.getLegalActions(agent)
-        if Directions.STOP in actions: actions.remove(Directions.STOP)
-        if agent.configuration.pos in self.twoPathDictionary.keys():
-            opposite = oppositeDirection(agent.configuration.direction)
-            actions.remove(opposite)
-        if terminalTest(state, depth):
-            return utility(state),state,Directions.STOP,alpha,beta
-        returnV = float("inf")
-        returnState = None
-        returnAction = None
-        for a in actions:
-            successor = (state.generateSuccessor(agent, a))
-            newValue,newState,unused,newAlpha,newBeta = maxValue(successor, (depth+1), alpha, beta)
-            if newValue <= alpha: return newValue,state,Directions.STOP,alpha,beta
-            if newValue < beta: beta = newValue
-            if newValue <= returnV:
-                returnState = successor
-                returnV = newValue
-                returnAction = a
-        return returnV,returnState,returnAction,alpha,beta
-    
-    def utility(state):
-        return bestEvaluationFunction(state)
-    
-    def terminalTest(state, depth):
-        if depth == self.depth or state.isLose() or state.isWin():
-            return True
-        return False
-    
-    v,s,a,alpha,beta = maxValue(gameState, 0, -float("inf"), float("inf"))
+    v,s,a = maxValue(gameState, 0)
     return a
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-        
-    
-                    
-                    
-                
-                 
-        
-    
-    
-        
-    
-            
-            
-            
+       
     util.raiseNotDefined()
 
 
@@ -1595,8 +1779,7 @@ class ClosestDotSearchAgent(SearchAgent):
                     t = (str(action), str(currentState))
                     raise Exception, 'findPathToClosestDot returned an illegal move: %s!\n%s' % t
                 currentState = currentState.generateSuccessor(0, action)
-        self.actionIndex = 0
-        
+        self.actionIndex = 0   
     def findPathToClosestDot(self, gameState):
         "Returns a path (a list of actions) to the closest dot, starting from gameState"
         # Here are some useful elements of the startState
@@ -1604,6 +1787,7 @@ class ClosestDotSearchAgent(SearchAgent):
         foodGrid = gameState.getFood()
         walls = gameState.getWalls()
         problem = AnyFoodSearchProblem(gameState)
+        
 
         "*** YOUR CODE HERE ***"
         return search.bfs(problem)
