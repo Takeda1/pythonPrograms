@@ -62,25 +62,29 @@ def train_logistic(data, labels, epochs, alpha):
     #    y's = "label"
     #      g = logistic
     #    w   <-  w  + alpha*(y-g(wT*x))*g'(wT*x)*x
-    x = data
-    n,m = x.shape
-    for i in range(1, epochs):
-        g = logistic(np.dot(w.T,x))
-        dg = logistic_prime(np.dot(w.T,x))
-        for i in range(0, n):
-            newRow = []
-            for j in range(0, m):
-                newRow = np.append(newRow, labels[i])
-            if i == 0:
-                y = newRow
-            else:
-                y = np.vstack([y, newRow])  
-        y_minus_g = y-g
-        times_dg = np.dot(y_minus_g,dg)
-        times_x = np.dot(times_dg,x)
-        times_alpha = alpha*times_x
-        plus_w = times_alpha + w
-        w = (w + alpha*(((y-g)*dg)*x))
+    
+    
+    
+    def grad_logistic(x):
+        idxplus=np.where(x>0)
+        idxminus=np.where(x<=0)
+        grad=np.zeros(len(x))
+        xplus=x[idxplus]
+        grad[idxplus]=-np.exp(-xplus)/(1.0+np.exp(-xplus))
+        xminus=x[idxminus]
+        grad[idxminus]=-1.0/(1.0+np.exp(xminus))
+        return grad    
+    
+    for epoch in range(epochs):
+        for row in range(data.shape[0]):
+            activation = logistic(np.inner(w, data[row,:]))
+            diff = labels[row]-activation
+            gp = logistic_prime(np.inner(w, data[row,:]))
+            w += alpha*diff*gp*data[row, :]
+            if labels[row] != np.round(activation):
+                error_counts[epoch] += 1
+            errors[epoch] += .5 * diff **2
+
     return w, errors, error_counts
             
 #-----------------------------------------------------

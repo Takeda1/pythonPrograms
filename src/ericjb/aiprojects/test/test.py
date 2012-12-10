@@ -5,6 +5,86 @@ Created on Aug 29, 2012
 '''
 import heapq
 import itertools
+import numpy as np
+import math
+from math import log
+import copy
+import collections
+
+
+def rollScore(C, X, A=1, B=1, D=0):
+    X-=(A*D)
+    B=(A*B)
+
+    baseNums = []
+    oldNums = []
+    newNums = []
+    for i in range(C): 
+        baseNums.append(i+1)
+        oldNums.append(i+1)
+    for i in range(B-1):
+        newNums = []
+        for j in baseNums:
+            for k in oldNums:
+                newNums.append(j+k)
+        oldNums = copy.deepcopy(newNums)
+    counter = collections.Counter(oldNums)
+    freqs = {}
+    total = C**B
+    for i in counter.keys():
+        freqs[i] = round((counter[i] / float(total)), 3)
+    pLess = 0
+    for i in freqs.keys():
+        if i < X: pLess +=freqs[i]
+    pEqual = freqs[X]
+    pMore = 1-(pLess+pEqual)
+        
+    print(counter.values())
+    print(freqs.values())
+    
+    print "% Less",pLess*100
+    print "% Equal",pEqual*100
+    print "% More",pMore*100
+    return pLess, pEqual, pMore
+
+print '?'
+
+"""
+def Harmonic(n):
+    gamma = 0.57721566490153286060651209008240243104215933593992
+    return gamma + log(n) + 0.5/n - 1./(12*n**2) + 1./(120*n**4)
+def reverseHarmonic(h):
+    error = 1.0
+    r = 1.0
+    prev = 0
+    tested = []
+    close = False
+    reverse = 0
+    bestError = 1
+    while (error > .001 or error < -.001) and int(r) not in tested:
+        tested.append(int(r))
+        if prev < h and close == False:
+            r = r + math.ceil(h/100.0)
+            prev = r*Harmonic(r)
+        elif prev > h:
+            close = True
+            r = r - math.ceil(h/1000.0)
+            prev = r*Harmonic(r)
+        error = (h - prev)/float(h)
+        if abs(error) < abs(bestError):
+            bestError = error
+            reverse = int(r)
+    return reverse
+
+print reverseHarmonic(50000)
+print reverseHarmonic(20)
+print reverseHarmonic(1)
+print reverseHarmonic(1000)
+"""
+
+
+
+
 
 class BetterPriorityQueue:
     """
@@ -19,7 +99,7 @@ class BetterPriorityQueue:
     
     Note that this PriorityQueue does not allow you to change the priority
     of an item.  However, you may insert the same item multiple times with
-    different priorities.
+    different priorities
     """  
     def  __init__(self):  
         self.heap = []
@@ -151,8 +231,7 @@ while frontier.isEmpty() == False:
     print frontier.entry_finder
     print frontier.heap
 """
-for i in range(30):
-    print round((i/3)) *3
+
 
 
 
